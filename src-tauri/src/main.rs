@@ -103,6 +103,8 @@ const WINE_DLL_OVERRIDES_KEY: &str = r"HKCU\Software\Wine\DllOverrides";
 const CONTROLLER_DLL_OVERRIDE_VALUE: &str = "native,builtin";
 #[cfg(not(windows))]
 const CONTROLLER_DLL_OVERRIDE_NAMES: [&str; 3] = ["xinput1_3", "dinput", "dinput8"];
+#[cfg(windows)]
+const CONTROLLER_DLL_FILE_NAMES: [&str; 3] = ["XInput1_3.dll", "Dinput.dll", "Dinput8.dll"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct LauncherWindowSize {
@@ -2351,6 +2353,160 @@ impl Default for LauncherPrefs {
     }
 }
 
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ControllerDllFileState {
+    name: String,
+    active_path: Option<String>,
+    disabled_path: Option<String>,
+    active: bool,
+    disabled: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ControllerDllStateResponse {
+    available: bool,
+    files: Vec<ControllerDllFileState>,
+}
+
+#[cfg(windows)]
+fn controller_dll_path_text(path: &Path) -> String {
+    path.display().to_string()
+}
+
+#[cfg(windows)]
+fn find_case_insensitive_file(folder: &Path, target_name: &str) -> Option<PathBuf> {
+    let entries = fs::read_dir(folder).ok()?;
+    for entry in entries.flatten() {
+        let file_name = entry.file_name();
+        if file_name.to_string_lossy().eq_ignore_ascii_case(target_name) {
+            return Some(entry.path());
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+fn controller_dll_file_state(folder: &Path, name: &str) -> ControllerDllFileState {
+    let disabled_name = format!("{name}.disabled");
+    let active_path = find_case_insensitive_file(folder, name).unwrap_or_else(|| folder.join(name));
+    let disabled_path = find_case_insensitive_file(folder, &disabled_name)
+        .unwrap_or_else(|| folder.join(&disabled_name));
+    let active = active_path.is_file();
+    let disabled = disabled_path.is_file();
+
+    ControllerDllFileState {
+        name: name.to_string(),
+        active_path: Some(controller_dll_path_text(&active_path)),
+        disabled_path: Some(controller_dll_path_text(&disabled_path)),
+        active,
+        disabled,
+    }
+}
+
+#[cfg(windows)]
+fn collect_controller_dll_state(folder: &Path) -> ControllerDllStateResponse {
+    let files: Vec<_> = CONTROLLER_DLL_FILE_NAMES
+        .iter()
+        .map(|name| controller_dll_file_state(folder, name))
+        .collect();
+    let available = files.iter().all(|file| file.active || file.disabled);
+
+    ControllerDllStateResponse { available, files }
+}
+
+#[cfg(windows)]
+fn rename_controller_dll_files(folder: &Path, enabled: bool) -> Result<(), String> {
+    let state = collect_controller_dll_state(folder);
+    if !state.available {
+        return Ok(());
+    }
+
+    for file in state.files {
+        let active_path = file
+            .active_path
+            .as_ref()
+            .map(PathBuf::from)
+            .ok_or_else(|| format!("missing active path for {}", file.name))?;
+        let disabled_path = file
+            .disabled_path
+            .as_ref()
+            .map(PathBuf::from)
+            .ok_or_else(|| format!("missing disabled path for {}", file.name))?;
+
+        if enabled {
+            if file.disabled && !file.active {
+                fs::rename(&disabled_path, &active_path).map_err(|err| {
+                    format!(
+                        "failed to enable {} from {} to {}: {}",
+                        file.name,
+                        disabled_path.display(),
+                        active_path.display(),
+                        err
+                    )
+                })?;
+            }
+        } else if file.active && !file.disabled {
+            fs::rename(&active_path, &disabled_path).map_err(|err| {
+                format!(
+                    "failed to disable {} from {} to {}: {}",
+                    file.name,
+                    active_path.display(),
+                    disabled_path.display(),
+                    err
+                )
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn sync_controller_dll_files(
+    game_folder: Option<String>,
+    enabled: bool,
+    apply_changes: Option<bool>,
+) -> Result<ControllerDllStateResponse, String> {
+    #[cfg(not(windows))]
+    {
+        let _ = (game_folder, enabled, apply_changes);
+        return Ok(ControllerDllStateResponse {
+            available: true,
+            files: Vec::new(),
+        });
+    }
+
+    #[cfg(windows)]
+    {
+        let folder_value = game_folder.unwrap_or_default();
+        let folder_text = folder_value.trim();
+        if folder_text.is_empty() {
+            return Ok(ControllerDllStateResponse {
+                available: false,
+                files: Vec::new(),
+            });
+        }
+
+        let folder = PathBuf::from(folder_text);
+        if !folder.is_dir() {
+            return Ok(ControllerDllStateResponse {
+                available: false,
+                files: Vec::new(),
+            });
+        }
+
+        let mut state = collect_controller_dll_state(&folder);
+        if apply_changes.unwrap_or(false) && state.available {
+            rename_controller_dll_files(&folder, enabled)?;
+            state = collect_controller_dll_state(&folder);
+        }
+
+        Ok(state)
+    }
+}
+
 impl UiPrefs {
     fn launcher_window_size_for_style(&self, style: u32) -> LauncherWindowSize {
         match style {
@@ -2379,7 +2535,6 @@ impl UiPrefs {
     }
 }
 
-#[derive()]
 struct TauriState {
     client: reqwest::Client,
     state_sync: Arc<Mutex<TauriStateSync>>,
@@ -4867,6 +5022,7 @@ fn main() {
                     get_linux_prefix_status,
                     install_linux_portable_prefix,
                     play_linux_ui_sfx,
+                    sync_controller_dll_files,
                     detect_game_version,
                     get_server_version_info,
                     set_setting,

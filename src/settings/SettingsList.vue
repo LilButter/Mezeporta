@@ -1,6 +1,7 @@
 <script setup>
+import { invoke } from "@tauri-apps/api";
 import { open } from "@tauri-apps/api/dialog";
-import { exists, readDir, renameFile } from "@tauri-apps/api/fs";
+import { readDir } from "@tauri-apps/api/fs";
 import { platform } from "@tauri-apps/api/os";
 import { join } from "@tauri-apps/api/path";
 import { appWindow, PhysicalSize } from "@tauri-apps/api/window";
@@ -60,7 +61,6 @@ const GAME_VERSION_DISPLAY_LABELS = {
 };
 const SOUND_LEVEL_OPTIONS = Array.from({ length: 8 }, (_, index) => index);
 const SAMPLE_RATE_OPTIONS = [11025, 22050, 44100, 48000];
-const CONTROLLER_DLL_NAMES = ["XInput1_3.dll", "Dinput.dll", "Dinput8.dll"];
 const RESOLUTION_OPTIONS = [
   { width: 640, height: 480, value: "640x480", label: "640x480" },
   { width: 800, height: 480, value: "800x480", label: "800x480" },
@@ -321,16 +321,7 @@ watch(
   { immediate: true }
 );
 
-async function safePathExists(path) {
-  if (!path) return false;
-  try {
-    return await exists(path);
-  } catch (_error) {
-    return false;
-  }
-}
-
-async function controllerDllState() {
+async function controllerDllState(enabled, applyChanges = false) {
   if (!shouldManageControllerDllFiles.value) {
     return { available: true, files: [] };
   }
@@ -338,39 +329,14 @@ async function controllerDllState() {
   const folder = String(effectiveFolder.value ?? "").trim();
   if (!folder) return { available: false, files: [] };
 
-  const files = [];
-  for (const name of CONTROLLER_DLL_NAMES) {
-    let activePath = "";
-    let disabledPath = "";
-    try {
-      activePath = await join(folder, name);
-      disabledPath = await join(folder, `${name}.disabled`);
-    } catch (_error) {
-      return { available: false, files: [] };
-    }
-    files.push({
-      name,
-      activePath,
-      disabledPath,
-      active: await safePathExists(activePath),
-      disabled: await safePathExists(disabledPath),
-    });
-  }
-
-  return {
-    available: files.every((file) => file.active || file.disabled),
-    files,
-  };
-}
-
-async function renameIfPresent(from, to) {
-  if (!(await safePathExists(from))) return false;
-  if (await safePathExists(to)) return true;
   try {
-    await renameFile(from, to);
-    return true;
+    return await invoke("sync_controller_dll_files", {
+      gameFolder: folder,
+      enabled: Boolean(enabled),
+      applyChanges: Boolean(applyChanges),
+    });
   } catch (_error) {
-    return false;
+    return { available: false, files: [] };
   }
 }
 
@@ -389,31 +355,15 @@ async function syncControllerDllState(enabled, persistPreference = false) {
   }
 
   const nonce = ++controllerDllSyncNonce;
-  const state = await controllerDllState();
+  const state = await controllerDllState(enabled, true);
   if (nonce !== controllerDllSyncNonce) return false;
 
   controllerDllsMissing.value = !state.available;
   if (!state.available) {
-    for (const file of state.files) {
-      await renameIfPresent(file.activePath, file.disabledPath);
-    }
     if (store.settings.preloadControllerDlls) {
       await setLauncherPrefs({ preloadControllerDlls: false });
     }
     return false;
-  }
-
-  for (const file of state.files) {
-    if (enabled) {
-      await renameIfPresent(file.disabledPath, file.activePath);
-    } else {
-      await renameIfPresent(file.activePath, file.disabledPath);
-    }
-  }
-
-  const nextState = await controllerDllState();
-  if (nonce === controllerDllSyncNonce) {
-    controllerDllsMissing.value = !nextState.available;
   }
 
   if (persistPreference && !controllerDllsMissing.value) {

@@ -1,4 +1,4 @@
-﻿import { assetUrl } from "../store";
+import { assetUrl } from "../store";
 
 export const SETTINGS_SECTIONS = Object.freeze([
   { id: "launcher", labelKey: "settings-launcher-title", infoKey: "nav-launcher" },
@@ -74,8 +74,7 @@ export const GAME_VERSION_BRANCH_LABELS = Object.freeze({
   ZZ: "Z",
 });
 
-export const SETTINGS_INFO_BODY_LOREM =
-  "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
+export const SETTINGS_INFO_BODY_FALLBACK = "";
 
 export function versionDisplayLabel(version) {
   return GAME_VERSION_DISPLAY_LABELS[version] ?? version;
@@ -97,7 +96,7 @@ export function versionInfoImageUrl(version) {
 }
 
 export function versionInfoBodyFallback() {
-  return SETTINGS_INFO_BODY_LOREM;
+  return SETTINGS_INFO_BODY_FALLBACK;
 }
 
 export const GAME_VERSION_INFO_IMAGES = Object.freeze(
@@ -134,55 +133,55 @@ export const SETTINGS_INFO = Object.freeze({
     titleKey: "settings-launcher-title",
     titleFallback: "Launcher",
     bodyKey: "settings-info-nav-launcher-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "nav-version": {
     titleKey: "settings-version-title",
     titleFallback: "Version",
     bodyKey: "settings-info-nav-version-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "nav-settings": {
     titleKey: "settings-screen-title",
     titleFallback: "Screen",
     bodyKey: "settings-info-nav-settings-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "nav-graphics": {
     titleKey: "settings-graphics-title",
     titleFallback: "Graphics",
     bodyKey: "settings-info-nav-graphics-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "nav-audio": {
     titleKey: "settings-audio-title",
     titleFallback: "Audio",
     bodyKey: "settings-info-nav-audio-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "nav-controls": {
     titleKey: "settings-controls-title",
     titleFallback: "Controls",
     bodyKey: "settings-info-nav-controls-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "nav-advanced": {
     titleKey: "settings-advanced-title",
     titleFallback: "Advanced",
     bodyKey: "settings-info-nav-advanced-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "launcher-theme": {
     titleKey: "style-label",
     titleFallback: "Theme",
     bodyKey: "settings-info-launcher-theme-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "font-selection": {
     titleKey: "font-style-label",
     titleFallback: "Font",
     bodyKey: "settings-info-font-selection-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "launcher-resolution": {
     titleKey: "launcher-resolution-label",
@@ -201,13 +200,13 @@ export const SETTINGS_INFO = Object.freeze({
     titleKey: "launcher-resolution-reset-label",
     titleFallback: "Reset",
     bodyKey: "settings-info-launcher-resolution-reset-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "launcher-controller": {
     titleKey: "launcher-controller-label",
     titleFallback: "Controller",
     bodyKey: "settings-info-launcher-controller-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "launcher-hardware-acceleration": {
     titleKey: "launcher-hardware-acceleration-label",
@@ -219,25 +218,25 @@ export const SETTINGS_INFO = Object.freeze({
     titleKey: "launcher-sfx-label",
     titleFallback: "Sound Effects",
     bodyKey: "settings-info-launcher-sfx-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "launcher-sfx-volume": {
     titleKey: "sfx-volume-label",
     titleFallback: "UI sound volume",
     bodyKey: "settings-info-launcher-sfx-volume-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "game-branch": {
     titleKey: "game-branch-label",
     titleFallback: "Branch",
     bodyKey: "settings-info-game-branch-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "game-branch-online": {
     titleKey: "branch-online-label",
     titleFallback: "Online",
     bodyKey: "settings-info-game-branch-online-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
     iconGroup: "game-branches",
     activeBranch: "online",
   },
@@ -245,7 +244,7 @@ export const SETTINGS_INFO = Object.freeze({
     titleKey: "branch-forward-label",
     titleFallback: "Forward",
     bodyKey: "settings-info-game-branch-forward-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
     iconGroup: "game-branches",
     activeBranch: "forward",
   },
@@ -253,7 +252,7 @@ export const SETTINGS_INFO = Object.freeze({
     titleKey: "branch-g-label",
     titleFallback: "G",
     bodyKey: "settings-info-game-branch-g-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
     iconGroup: "game-branches",
     activeBranch: "g",
   },
@@ -261,7 +260,7 @@ export const SETTINGS_INFO = Object.freeze({
     titleKey: "branch-z-label",
     titleFallback: "Z",
     bodyKey: "settings-info-game-branch-z-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
     iconGroup: "game-branches",
     activeBranch: "z",
   },
@@ -269,182 +268,182 @@ export const SETTINGS_INFO = Object.freeze({
     titleKey: "game-version-label",
     titleFallback: "Version",
     bodyKey: "settings-info-game-version-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   ...GAME_VERSION_INFO_ENTRIES,
   "friend-signature": {
     titleKey: "friend-signature-label",
     titleFallback: "Signature",
     bodyKey: "settings-info-friend-signature-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "hd-version": {
     titleKey: "hd-version-label",
     titleFallback: "HD Mode",
     bodyKey: "settings-info-hd-version-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "game-folder": {
     titleKey: "game-folder-label",
     titleFallback: "Location",
     bodyKey: "settings-info-game-folder-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "game-folder-browse": {
     titleKey: "browse-folder-label",
     titleFallback: "Browse Folder",
     bodyKey: "settings-info-game-folder-browse-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "game-folder-edit": {
     titleKey: "edit-folder-label",
     titleFallback: "Edit Path",
     bodyKey: "settings-info-game-folder-edit-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "brightness": {
     titleKey: "brightness-label",
     titleFallback: "Brightness",
     bodyKey: "settings-info-brightness-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "display-mode": {
     titleKey: "fullscreen-label",
     titleFallback: "Display Mode",
     bodyKey: "settings-info-display-mode-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "window-resolution": {
     titleKey: "window-resolution-label",
     titleFallback: "Resolution",
     bodyKey: "settings-info-window-resolution-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "window-custom-resolution": {
     titleKey: "custom-resolution-label",
     titleFallback: "Resolution",
     bodyKey: "settings-info-window-custom-resolution-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "fullscreen-resolution": {
     titleKey: "fullscreen-resolution-label",
     titleFallback: "Resolution",
     bodyKey: "settings-info-fullscreen-resolution-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "fullscreen-custom-resolution": {
     titleKey: "custom-resolution-label",
     titleFallback: "Custom Size",
     bodyKey: "settings-info-fullscreen-custom-resolution-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "match-monitor-resolution": {
     titleKey: "match-monitor-resolution-label",
     titleFallback: "Match monitor resolution",
     bodyKey: "settings-info-match-monitor-resolution-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "texture-compression": {
     titleKey: "texture-compression-label",
     titleFallback: "Texture compression",
     bodyKey: "settings-info-texture-compression-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "max-char-display": {
     titleKey: "max-char-display-label",
     titleFallback: "Max character display",
     bodyKey: "settings-info-max-char-display-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "hd-advanced-toggle": {
     titleKey: "advance-settings-label",
     titleFallback: "Advance Settings",
     bodyKey: "settings-info-hd-advanced-toggle-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "hd-graphics-toggle": {
     titleKey: "hd-version-settings-label",
     titleFallback: "HD Mode Settings",
     bodyKey: "settings-info-hd-graphics-toggle-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "hd-graphics-numeric": {
     titleKey: "hd-version-settings-label",
     titleFallback: "HD Mode Settings",
     bodyKey: "settings-info-hd-graphics-numeric-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "disable-sound-output": {
     titleKey: "disable-sound-output-label",
     titleFallback: "Disable sound output",
     bodyKey: "settings-info-disable-sound-output-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "general-volume": {
     titleKey: "general-volume-label",
     titleFallback: "General volume",
     bodyKey: "settings-info-general-volume-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "unfocused-volume": {
     titleKey: "unfocused-volume-label",
     titleFallback: "Unfocused volume",
     bodyKey: "settings-info-unfocused-volume-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "minimized-volume": {
     titleKey: "minimized-volume-label",
     titleFallback: "Minimized volume",
     bodyKey: "settings-info-minimized-volume-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "game-bgm-volume": {
     titleKey: "game-bgm-volume-label",
     titleFallback: "BGM volume",
     bodyKey: "settings-info-game-bgm-volume-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "game-se-volume": {
     titleKey: "game-se-volume-label",
     titleFallback: "SFX volume",
     bodyKey: "settings-info-game-se-volume-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "sound-frequency": {
     titleKey: "sound-frequency-label",
     titleFallback: "Sample rate",
     bodyKey: "settings-info-sound-frequency-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "sound-buffer-num": {
     titleKey: "sound-buffer-num-label",
     titleFallback: "Buffer size",
     bodyKey: "settings-info-sound-buffer-num-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "controller-vibration": {
     titleKey: "controller-vibration-label",
     titleFallback: "Vibration",
     bodyKey: "settings-info-controller-vibration-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "controller-fix": {
     titleKey: "disable-xinput-preload-label",
     titleFallback: "R-Analog Patch",
     bodyKey: "settings-info-controller-fix-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "dev-mode": {
     titleKey: "dev-mode-label",
     titleFallback: "Dev Mode",
     bodyKey: "settings-info-dev-mode-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "offline-images": {
     titleKey: "offline-images-label",
     titleFallback: "Offline-Images",
     bodyKey: "settings-info-offline-images-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
   "wine-prefix-mode": {
     titleKey: "wine-prefix-label",
@@ -493,7 +492,7 @@ export const SETTINGS_INFO = Object.freeze({
     titleKey: "reset-patch-label",
     titleFallback: "Reset Patch",
     bodyKey: "settings-info-reset-patch-body",
-    bodyFallback: SETTINGS_INFO_BODY_LOREM,
+    bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
 });
 
