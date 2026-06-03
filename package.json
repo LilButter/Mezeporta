@@ -1,0 +1,39 @@
+{
+  "name": "Mezeporta",
+  "private": true,
+  "version": "1.5.2",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/build-frontend.mjs",
+    "preview": "vite preview",
+    "visualize": "vite-bundle-visualizer",
+    "tauri:dev": "tauri dev",
+    "tauri:dev:linux": "node scripts/dev-linux.mjs",
+    "tauri:build": "tauri build",
+    "tauri:build:linux": "node scripts/build-linux.mjs",
+    "tauri:build:linux:portable": "node scripts/build-linux.mjs --portable-only",
+    "tauri:build:linux:wsl": "node scripts/wsl-linux.mjs build",
+    "tauri:build:linux:portable:wsl": "node scripts/wsl-linux.mjs portable",
+    "tauri:dev:linux:wsl": "node scripts/wsl-linux.mjs dev",
+    "tauri:dev:linux:wsl-gpu": "node scripts/wsl-linux.mjs dev-gpu",
+    "build:launcher": "node build-launcher.mjs",
+    "meze-deps:build": "node scripts/build-meze-deps.mjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.6.3",
+    "autoprefixer": "^10.4.16",
+    "daisyui": "^3.9.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "vite": "^4.5.0",
+    "vite-bundle-visualizer": "^0.11.0"
+  },
+  "dependencies": {
+    "@fluent/bundle": "^0.18.0",
+    "@tauri-apps/api": "^1.6.0",
+    "@vitejs/plugin-vue": "^4.4.0",
+    "fluent-vue": "^3.5.0",
+    "vue": "^3.3.8"
+  }
+}

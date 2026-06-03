@@ -1,0 +1,2466 @@
+.ps4-shell .state-img {
+    cursor: pointer;
+    object-fit: none;
+    object-position: top;
+}
+
+.ps4-shell .state-img:hover:not(:disabled) {
+    object-position: bottom;
+}
+
+.ps4-shell .state-bg {
+    background-position: top;
+}
+
+.ps4-shell .state-bg:hover:not(:disabled) {
+    background-position: bottom;
+}
+
+.ps4-shell .font-main {
+    font-family: var(--launcher-font-family, "MS Gothic", "Zen Antique", serif);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+.ps4-shell.jp .font-main {
+    font-family: var(--launcher-font-family, "MS Gothic", "Zen Antique", serif);
+}
+
+.ps4-shell .font-old {
+    font-family: var(--launcher-font-family, "MS Gothic", "Zen Antique", serif);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+.ps4-shell .info {
+    color: lightblue;
+}
+
+.ps4-shell .warning {
+    color: #f4de22;
+}
+
+.ps4-shell .error {
+    color: #eb3535;
+}
+
+.ps4-shell .arrow-down {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 8px solid #b9c6bc;
+}
+
+.ps4-shell .arrow-up {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 8px solid #b9c6bc;
+}
+
+.ps4-shell .locale-picker > *:last-child {
+    border-bottom-right-radius: 0.25rem;
+    border-bottom-left-radius: 0.25rem;
+}
+
+.ps4-shell .scrollbar::-webkit-scrollbar {
+    cursor: pointer;
+    width: 8px;
+}
+
+.ps4-shell .scrollbar::-webkit-scrollbar-track {
+    background-color: rgba(0, 0, 0, 0.32);
+    border-radius: 999px;
+}
+
+.ps4-shell .scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: linear-gradient(180deg, #92b9bb 0%, #4d7f84 100%);
+}
+
+.ps4-shell .box-text {
+    background: rgba(3, 15, 12, 0.78);
+    border: 1px solid rgba(154, 181, 171, 0.28);
+    border-radius: 0.4rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    outline: none;
+    outline-offset: 2px;
+    padding: 0.25rem 0.5rem;
+}
+
+.ps4-shell .ps4-settings-page .box-text {
+    background-color: #00000099;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.25rem;
+}
+
+.ps4-shell .box-text.controller-nav-focused,
+.ps4-shell .ps4-login-input.controller-nav-focused,
+.ps4-shell .ps4-server-picker.controller-nav-focused {
+    outline: none !important;
+    border-color: var(--controller-focus-color) !important;
+    box-shadow: 0 0 0 1px var(--controller-focus-color), var(--controller-focus-glow);
+}
+
+.ps4-shell *:disabled,
+.ps4-shell .box-disabled {
+    cursor: default;
+    filter: brightness(0.5);
+    pointer-events: none;
+}
+
+.ps4-shell .box-lg {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    padding: 0.25rem 1rem;
+}
+
+.ps4-shell .box-btn {
+    cursor: pointer;
+}
+
+.ps4-shell .box-btn:hover {
+    background-color: rgba(28, 46, 42, 0.9);
+}
+
+.ps4-root {
+    position: relative;
+    overflow: hidden;
+    background: transparent;
+}
+
+.ps4-shell {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    color: #f5f1df;
+}
+
+.ps4-window-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 0 8px 0 0;
+    z-index: 220;
+    pointer-events: none;
+}
+
+.ps4-window-drag {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 180px;
+    height: 32px;
+    pointer-events: auto;
+}
+
+.ps4-window-locale {
+    position: relative;
+    z-index: 221;
+    pointer-events: auto;
+}
+
+.ps4-window-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    z-index: 221;
+    pointer-events: auto;
+}
+
+.ps4-window-control-image {
+    width: 50px;
+    height: 20px;
+}
+
+.ps4-header {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    height: 181px;
+    pointer-events: none;
+    z-index: 18;
+}
+
+.ps4-logo {
+    position: absolute;
+    left: 64px;
+    top: 36px;
+    width: 373px;
+    height: 134px;
+    object-fit: contain;
+}
+
+.ps4-top-links {
+    position: absolute;
+    right: 186px;
+    top: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    pointer-events: auto;
+    z-index: 24;
+}
+
+.ps4-top-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 126px;
+    min-width: 126px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.ps4-top-link-disabled {
+    opacity: 0.45;
+}
+
+.ps4-top-link-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.42);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+}
+
+.ps4-top-link-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    object-position: center;
+    opacity: 0.92;
+}
+
+.ps4-top-link-text {
+    display: block;
+    max-width: 68px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #dfe6df;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.ps4-settings-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    --settings-gold-gradient: rgba(247, 222, 154, 0.96) !important;
+    --settings-gold-gradient-strong: rgba(247, 222, 154, 0.96) !important;
+}
+
+.ps4-settings-shell .settings-top-nav {
+    position: relative;
+    z-index: 6;
+    margin-left: 76px;
+    margin-top: 5px;
+    transform: translateY(16px);
+}
+
+.ps4-settings-shell .settings-nav-strip {
+    position: relative;
+    width: 791px;
+    height: 70px;
+    overflow: hidden;
+}
+
+.ps4-settings-shell .settings-nav-hitbox {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    color: #f4efe2;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.ps4-settings-shell .settings-nav-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    transform: none;
+}
+
+.ps4-settings-shell .settings-nav-button[data-settings-active="true"] .settings-nav-label {
+    transform: translateY(6px);
+}
+
+.ps4-settings-shell .settings-nav-button[data-settings-tab="controls"] .settings-nav-label {
+    transform: translateX(-2px);
+}
+
+.ps4-settings-shell .settings-nav-button[data-settings-tab="advanced"] .settings-nav-label {
+    transform: translateX(-5px);
+}
+
+.ps4-settings-shell .settings-nav-button[data-settings-tab="controls"][data-settings-active="true"] .settings-nav-label {
+    transform: translate(-2px, 6px);
+}
+
+.ps4-settings-shell .settings-nav-button[data-settings-tab="advanced"][data-settings-active="true"] .settings-nav-label {
+    transform: translate(-5px, 6px);
+}
+
+.ps4-settings-shell .settings-body {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0;
+    overflow: visible;
+}
+
+.ps4-settings-shell .settings-body::after {
+    content: "";
+    position: absolute;
+    top: 17px;
+    right: 70px;
+    width: 598px;
+    height: 228px;
+    background: url(/extra/SettingButtons/side2.png) left top / 598px 228px no-repeat;
+    box-shadow: none;
+    filter: drop-shadow(0 15px 12px rgba(0, 0, 0, 0.62));
+    pointer-events: none;
+    z-index: 1;
+    clip-path: inset(0);
+    transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ps4-settings-shell .settings-pane-shell {
+    position: absolute;
+    left: 66px;
+    top: 4px;
+    right: auto;
+    bottom: auto;
+    width: 820px;
+    height: 550px;
+    padding: 2rem 6.4rem 2.2rem 3.5rem !important;
+    background: url(/extra/SettingButtons/Shell.png);
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    filter: drop-shadow(0 15px 12px rgba(0, 0, 0, 0.62));
+    z-index: 4;
+}
+
+.ps4-settings-shell .settings-info-shell {
+    position: absolute;
+    top: 20px;
+    right: 75px;
+    bottom: auto;
+    width: 322px;
+    height: 228px;
+    box-sizing: border-box;
+    padding: 25px 30px 40px !important;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow: hidden;
+    scrollbar-width: none;
+    z-index: 2;
+    transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ps4-settings-shell .settings-info-shell::after {
+    display: none;
+}
+
+.ps4-settings-shell .settings-info-content {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 auto;
+    max-width: 100%;
+    opacity: 1;
+    transition: opacity 120ms ease 80ms;
+}
+
+.ps4-settings-shell .settings-info-viewport {
+    position: relative;
+    z-index: 2;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.ps4-settings-shell .settings-info-shell::-webkit-scrollbar {
+    display: none;
+}
+
+.ps4-settings-shell .settings-info-title {
+    margin: 0 0 12px;
+    color: #3e2a15;
+    font-size: 28px;
+    line-height: 1.05;
+    text-shadow: 0 1px 0 rgba(255, 244, 200, 0.52);
+    overflow-wrap: anywhere;
+    max-width: 100%;
+}
+
+.ps4-settings-shell .settings-info-body {
+    margin: 0;
+    color: rgba(55, 35, 16, 0.95);
+    font-size: 18px;
+    line-height: 1.3;
+    text-shadow: 0 1px 0 rgba(255, 244, 200, 0.34);
+    overflow-wrap: anywhere;
+    max-width: 100%;
+}
+
+.ps4-settings-shell .settings-pane-shell > div,
+.ps4-settings-shell .settings-pane-shell .overflow-auto {
+    max-width: 100%;
+    overflow-x: hidden !important;
+}
+
+.ps4-settings-shell .settings-section-panel {
+    height: 100%;
+    min-height: 0;
+    backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.ps4-settings-shell .settings-section-forward-enter-active,
+.ps4-settings-shell .settings-section-forward-leave-active,
+.ps4-settings-shell .settings-section-back-enter-active,
+.ps4-settings-shell .settings-section-back-leave-active {
+    transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ps4-settings-shell .settings-section-forward-enter-from {
+    transform: translate3d(18px, 0, 0);
+}
+
+.ps4-settings-shell .settings-section-forward-leave-to {
+    transform: translate3d(-14px, 0, 0);
+}
+
+.ps4-settings-shell .settings-section-back-enter-from {
+    transform: translate3d(-18px, 0, 0);
+}
+
+.ps4-settings-shell .settings-section-back-leave-to {
+    transform: translate3d(14px, 0, 0);
+}
+
+.ps4-settings-shell .settings-section-forward-animate {
+    animation: settings-section-forward-in 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.ps4-settings-shell .settings-section-back-animate {
+    animation: settings-section-back-in 190ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes settings-section-forward-in {
+    from {
+        transform: translate3d(18px, 0, 0);
+    }
+    to {
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes settings-section-back-in {
+    from {
+        transform: translate3d(-18px, 0, 0);
+    }
+    to {
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+.ps4-settings-shell .scrollbar,
+.ps4-settings-shell .settings-pane-shell .scrollbar {
+    scrollbar-color: rgba(91, 63, 37, 0.42) rgba(91, 63, 37, 0.16);
+    scrollbar-width: thin;
+}
+
+.ps4-settings-shell .scrollbar::-webkit-scrollbar,
+.ps4-settings-shell .settings-pane-shell .scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.ps4-settings-shell .scrollbar::-webkit-scrollbar-track,
+.ps4-settings-shell .settings-pane-shell .scrollbar::-webkit-scrollbar-track {
+    background: rgba(91, 63, 37, 0.14);
+    border: 1px solid rgba(80, 44, 12, 0.2);
+    border-radius: 999px;
+}
+
+.ps4-settings-shell .scrollbar::-webkit-scrollbar-thumb,
+.ps4-settings-shell .settings-pane-shell .scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(91, 63, 37, 0.42);
+    border: 1px solid rgba(80, 44, 12, 0.42);
+    border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ps4-settings-shell .settings-section-forward-enter-active,
+    .ps4-settings-shell .settings-section-forward-leave-active,
+    .ps4-settings-shell .settings-section-back-enter-active,
+    .ps4-settings-shell .settings-section-back-leave-active {
+        transition: none;
+        animation: none;
+    }
+}
+
+.ps4-settings-shell .settings-description-divider-button {
+    position: absolute;
+    top: -6px;
+    left: 861px;
+    width: 55px;
+    height: 338px;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    z-index: 5;
+    filter: drop-shadow(0 15px 12px rgba(0, 0, 0, 0.58));
+    transition: filter 160ms ease;
+}
+
+.ps4-settings-shell .settings-description-divider-button:hover,
+.ps4-settings-shell .settings-description-divider-button:focus-visible {
+    filter: brightness(1.08) drop-shadow(0 15px 12px rgba(0, 0, 0, 0.58)) drop-shadow(0 0 8px rgba(255, 214, 124, 0.35));
+}
+
+.ps4-settings-shell .settings-description-divider {
+    display: block;
+    width: 50px;
+    height: auto;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+}
+
+.ps4-settings-shell.settings-info-collapsed .settings-info-shell {
+    transform: translateX(-277px);
+}
+
+.ps4-settings-shell.settings-info-collapsed .settings-info-content {
+    opacity: 0;
+    pointer-events: none;
+    transition-delay: 180ms;
+}
+
+.ps4-settings-shell.settings-info-collapsed .settings-body::after {
+    transform: translateX(-277px);
+    clip-path: inset(0 0 0 488px);
+    filter: drop-shadow(0 15px 12px rgba(0, 0, 0, 0.62));
+}
+
+.ps4-settings-shell .settings-info-icon-strip {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin: 0 0 18px;
+}
+
+.ps4-settings-shell .settings-info-icon-frame {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    background: rgba(247, 218, 152, 0.22);
+    opacity: 0.82;
+    transform: scale(0.94);
+    transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.ps4-settings-shell .settings-info-icon-frame-active {
+    opacity: 1;
+    transform: scale(1);
+    background: rgba(255, 214, 124, 0.25);
+}
+
+.ps4-settings-shell .settings-item-row,
+.ps4-settings-shell .settings-checkbox-row,
+.ps4-settings-shell .settings-brightness-setting,
+.ps4-settings-shell .settings-binary-toggle {
+    color: #3f2a15 !important;
+    text-shadow: 0 1px 0 rgba(255, 244, 200, 0.38);
+}
+
+.ps4-settings-shell .settings-game-folder-description {
+    width: min(100%, 580px) !important;
+    color: rgba(63, 42, 21, 0.78) !important;
+    text-shadow: 0 1px 0 rgba(255, 244, 200, 0.28);
+    overflow-wrap: anywhere;
+}
+
+.ps4-settings-shell .settings-prefix-status-row {
+    width: min(100%, 580px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.ps4-settings-shell .settings-prefix-status-label {
+    color: #2f1d0d !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    text-shadow: 0 1px 0 rgba(255, 244, 200, 0.28);
+    padding-left: 0.2rem !important;
+}
+
+.ps4-settings-shell .settings-prefix-status-ready {
+    color: #2f1d0d !important;
+}
+
+.ps4-settings-shell .settings-prefix-status-warning {
+    color: #2f1d0d !important;
+}
+
+.ps4-settings-shell .settings-prefix-path-row {
+    width: min(100%, 580px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    margin-top: 0.35rem !important;
+}
+
+.ps4-settings-shell .settings-prefix-path-shell {
+    width: 100% !important;
+}
+
+.ps4-settings-shell .settings-prefix-path {
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}
+
+.ps4-settings-shell .settings-game-folder-path-row {
+    width: min(100%, 580px) !important;
+}
+
+.ps4-settings-shell [data-settings-branch-group="true"],
+.ps4-settings-shell [data-settings-version-group="true"] {
+    width: min(100%, 600px) !important;
+    max-width: 600px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow-x: hidden !important;
+}
+
+.ps4-settings-shell .settings-game-branch-button,
+.ps4-settings-shell .settings-game-version-button {
+    flex: 0 0 auto !important;
+}
+
+.ps4-settings-shell .settings-game-folder-path-shell,
+.ps4-settings-shell .settings-game-folder-input,
+.ps4-settings-shell .settings-game-folder-path {
+    color: #2f1d0d !important;
+    border-color: rgba(80, 44, 12, 0.34) !important;
+}
+
+.ps4-settings-shell .settings-game-folder-path-shell {
+    border: 1px solid rgba(80, 44, 12, 0.34) !important;
+    background: rgba(91, 63, 37, 0.32) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 244, 200, 0.24) !important;
+}
+
+.ps4-settings-shell .settings-game-folder-input,
+.ps4-settings-shell .settings-game-folder-path {
+    background: transparent !important;
+}
+
+.ps4-settings-shell .settings-game-folder-path-shell-editing {
+    background: rgba(247, 218, 152, 0.34) !important;
+    border-color: rgba(94, 50, 12, 0.26) !important;
+}
+
+.ps4-settings-shell .settings-game-folder-inline-action-button {
+    color: #3a2410 !important;
+    border-left-color: rgba(80, 44, 12, 0.34) !important;
+    background: rgba(43, 28, 12, 0.08) !important;
+    align-self: stretch !important;
+    height: auto !important;
+    min-height: 2.25rem !important;
+}
+
+.ps4-settings-shell .settings-game-folder-path-shell-editing .settings-game-folder-inline-action-button {
+    background: rgba(255, 214, 124, 0.16) !important;
+    border-left-color: rgba(94, 50, 12, 0.34) !important;
+}
+
+.ps4-settings-shell .settings-game-folder-inline-action-button:hover,
+.ps4-settings-shell .settings-game-folder-inline-action-button:focus-visible,
+.ps4-settings-shell .settings-game-folder-inline-action-button.controller-nav-focused {
+    background: rgba(255, 214, 124, 0.24) !important;
+    border-left-color: rgba(80, 44, 12, 0.44) !important;
+}
+
+.ps4-settings-shell .settings-game-folder-browse-button,
+.ps4-settings-shell .settings-resolution-action-button,
+.ps4-settings-shell .settings-resolution-custom-button,
+.ps4-settings-shell .settings-resolution-reset-button {
+    color: #2f1d0d !important;
+    background: rgba(91, 63, 37, 0.32) !important;
+    border-color: rgba(80, 44, 12, 0.34) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 244, 200, 0.24) !important;
+    opacity: 1 !important;
+}
+
+.ps4-settings-shell .settings-game-folder-browse-button:hover,
+.ps4-settings-shell .settings-game-folder-browse-button:focus-visible,
+.ps4-settings-shell .settings-game-folder-browse-button.controller-nav-focused,
+.ps4-settings-shell .settings-resolution-action-button:hover,
+.ps4-settings-shell .settings-resolution-action-button:focus-visible,
+.ps4-settings-shell .settings-resolution-action-button.controller-nav-focused,
+.ps4-settings-shell .settings-resolution-custom-button:hover,
+.ps4-settings-shell .settings-resolution-custom-button:focus-visible,
+.ps4-settings-shell .settings-resolution-custom-button.controller-nav-focused,
+.ps4-settings-shell .settings-resolution-custom-button[data-settings-custom-active="true"],
+.ps4-settings-shell .settings-resolution-reset-button:hover,
+.ps4-settings-shell .settings-resolution-reset-button:focus-visible,
+.ps4-settings-shell .settings-resolution-reset-button.controller-nav-focused {
+    color: #2b1c0c !important;
+    background: rgba(255, 214, 124, 0.42) !important;
+    border-color: rgba(80, 44, 12, 0.44) !important;
+}
+
+.ps4-settings-shell button[data-settings-info-key="reset-patch"] {
+    color: #fff2d3 !important;
+    background: rgba(125, 30, 23, 0.86) !important;
+    border-color: rgba(255, 214, 124, 0.62) !important;
+    box-shadow: 0 0 0 1px rgba(125, 30, 23, 0.78), 0 0 10px rgba(125, 30, 23, 0.32) !important;
+}
+
+.ps4-settings-shell button[data-settings-info-key="reset-patch"]:hover,
+.ps4-settings-shell button[data-settings-info-key="reset-patch"]:focus-visible,
+.ps4-settings-shell button[data-settings-info-key="reset-patch"].controller-nav-focused {
+    color: #7d1e17 !important;
+    background: rgba(247, 218, 152, 0.22) !important;
+    border-color: rgba(125, 30, 23, 0.78) !important;
+    outline: none !important;
+    box-shadow: inset 0 1px 0 rgba(255, 244, 200, 0.24), 0 0 0 1px rgba(125, 30, 23, 0.42) !important;
+}
+
+.ps4-settings-shell .settings-dropdown-toggle,
+.ps4-settings-shell .input.input-sm.input-primary,
+.ps4-settings-shell input.input.input-sm.input-primary {
+    color: #2f1d0d !important;
+    background: rgba(91, 63, 37, 0.32) !important;
+    border-color: rgba(80, 44, 12, 0.34) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 244, 200, 0.24) !important;
+}
+
+.ps4-settings-shell .settings-dropdown-label {
+    color: #2f1d0d !important;
+    text-shadow: 0 1px 0 rgba(255, 244, 200, 0.24);
+}
+
+.ps4-settings-shell .settings-dropdown-caret {
+    border-top-color: rgba(47, 29, 13, 0.82) !important;
+}
+
+.ps4-settings-shell input[type="number"].input.input-sm.input-primary,
+.ps4-settings-shell .settings-volume-input.input.input-sm.input-primary,
+.ps4-settings-shell input.input.input-sm.input-primary {
+    color: #2f1d0d !important;
+    background: rgba(91, 63, 37, 0.32) !important;
+    border: 1px solid rgba(80, 44, 12, 0.34) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 244, 200, 0.24) !important;
+    text-shadow: 0 1px 0 rgba(255, 244, 200, 0.22) !important;
+    box-sizing: border-box !important;
+}
+
+.ps4-settings-shell input[type="number"].input.input-sm.input-primary {
+    padding-right: 0.75rem !important;
+    appearance: textfield !important;
+    -moz-appearance: textfield !important;
+}
+
+.ps4-settings-shell input[type="number"].input.input-sm.input-primary::-webkit-outer-spin-button,
+.ps4-settings-shell input[type="number"].input.input-sm.input-primary::-webkit-inner-spin-button {
+    margin: 0 !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+}
+
+.ps4-settings-shell input[type="number"].input.input-sm.input-primary:focus,
+.ps4-settings-shell input[type="number"].input.input-sm.input-primary:focus-visible,
+.ps4-settings-shell .settings-volume-input.input.input-sm.input-primary:focus,
+.ps4-settings-shell .settings-volume-input.input.input-sm.input-primary:focus-visible,
+.ps4-settings-shell input.input.input-sm.input-primary:focus,
+.ps4-settings-shell input.input.input-sm.input-primary:focus-visible {
+    border-color: rgba(80, 44, 12, 0.44) !important;
+    background: rgba(255, 214, 124, 0.42) !important;
+    color: #2b1c0c !important;
+    box-shadow: inset 0 1px 0 rgba(255, 244, 200, 0.32) !important;
+}
+
+.ps4-settings-shell .settings-dropdown-menu {
+    color: #2f1d0d !important;
+    padding: 0.42rem 0.36rem !important;
+    background:
+        linear-gradient(rgba(248, 224, 168, 0.12), rgba(248, 224, 168, 0.12)),
+        url(/extra/SettingButtons/Shell.png) center 48% / 280% 340% no-repeat,
+        rgba(238, 203, 132, 0.92) !important;
+    border-color: rgba(88, 50, 15, 0.42) !important;
+    border-top: 1px solid rgba(88, 50, 15, 0.24) !important;
+    border-radius: 0 0 7px 7px !important;
+    box-shadow: inset 0 1px 0 rgba(255, 248, 214, 0.58), inset 0 0 18px rgba(106, 62, 18, 0.12), 0 10px 22px rgba(45, 24, 6, 0.28) !important;
+    backdrop-filter: blur(2px);
+    overflow: hidden auto;
+}
+
+.ps4-settings-shell .settings-dropdown-option {
+    position: relative;
+    width: calc(100% - 6px);
+    margin: 2px 3px 3px;
+    padding: 0.35rem 0.8rem 0.35rem 1.2rem !important;
+    border: 1px solid transparent !important;
+    border-radius: 0 !important;
+    color: #2f1d0d !important;
+    background: transparent !important;
+    text-shadow: 0 1px 0 rgba(255, 244, 200, 0.3);
+}
+
+.ps4-settings-shell .settings-dropdown-option::before {
+    content: "";
+    position: absolute;
+    left: 0.45rem;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(96, 54, 15, 0.32);
+    transform: translateY(-50%);
+}
+
+.ps4-settings-shell .settings-dropdown-option:hover:not(:disabled),
+.ps4-settings-shell .settings-dropdown-option:focus-visible:not(:disabled),
+.ps4-settings-shell .settings-dropdown-option.controller-nav-focused:not(:disabled),
+.ps4-settings-shell .settings-dropdown-option[data-settings-option-selected="true"] {
+    color: #2b1c0c !important;
+    background: var(--settings-gold-gradient) !important;
+    border-color: rgba(125, 74, 18, 0.34) !important;
+    box-shadow: inset 3px 0 0 rgba(125, 74, 18, 0.44), inset 0 1px 0 rgba(255, 248, 214, 0.5) !important;
+}
+
+.ps4-settings-shell .settings-dropdown-option:hover:not(:disabled)::before,
+.ps4-settings-shell .settings-dropdown-option:focus-visible:not(:disabled)::before,
+.ps4-settings-shell .settings-dropdown-option.controller-nav-focused:not(:disabled)::before,
+.ps4-settings-shell .settings-dropdown-option[data-settings-option-selected="true"]::before {
+    background: rgba(78, 39, 6, 0.82);
+}
+
+.ps4-settings-shell .settings-game-branch-button,
+.ps4-settings-shell .settings-game-version-button {
+    color: #4a331b !important;
+    background: rgba(255, 236, 181, 0.24) !important;
+    border-color: rgba(160, 107, 33, 0.35) !important;
+    box-shadow: none !important;
+}
+
+.ps4-settings-shell .settings-game-branch-button:hover,
+.ps4-settings-shell .settings-game-version-button:hover {
+    color: #2f1d0d !important;
+    background: var(--settings-gold-gradient) !important;
+    opacity: 1 !important;
+}
+
+.ps4-settings-shell .settings-game-branch-button.bg-\[\#ffd67c\],
+.ps4-settings-shell .settings-game-version-button.bg-\[\#ffd67c\] {
+    color: #2b1c0c !important;
+    background: var(--settings-gold-gradient-strong) !important;
+    border-color: rgba(125, 74, 18, 0.44) !important;
+    box-shadow: 0 0 10px rgba(145, 84, 12, 0.24) !important;
+}
+
+.ps4-settings-shell .settings-inline-error {
+    color: #a92619 !important;
+}
+
+.ps4-settings-shell .settings-checkbox-track,
+.ps4-settings-shell .settings-binary-toggle .w-12.h-7 {
+    background: rgba(91, 63, 37, 0.32) !important;
+    border-color: rgba(80, 44, 12, 0.34) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 244, 200, 0.24) !important;
+}
+
+.ps4-settings-shell .settings-checkbox-thumb,
+.ps4-settings-shell .settings-binary-toggle .absolute.left-\[3px\] {
+    background: rgba(248, 232, 188, 0.96) !important;
+}
+
+.ps4-settings-shell .settings-checkbox-thumb-checked,
+.ps4-settings-shell .settings-binary-toggle .peer:checked + div + div {
+    background: var(--settings-gold-gradient-strong) !important;
+}
+
+.ps4-settings-shell .settings-checkbox-row:has(input:checked) .settings-checkbox-track,
+.ps4-settings-shell .settings-binary-toggle:has(input:checked) .w-12.h-7 {
+    background: rgba(91, 63, 37, 0.32) !important;
+    border-color: rgba(80, 44, 12, 0.34) !important;
+}
+
+.ps4-settings-shell .settings-binary-toggle span {
+    color: #3f2a15 !important;
+    opacity: 0.9 !important;
+}
+
+.ps4-settings-shell .settings-range-accent {
+    accent-color: #f2ca77 !important;
+    color: #f2ca77 !important;
+    --range-shdw: #f2ca77 !important;
+}
+
+.ps4-settings-shell .settings-range-accent::-webkit-slider-runnable-track {
+    background: linear-gradient(
+        90deg,
+        rgba(248, 216, 146, 0.58) 0%,
+        rgba(242, 202, 119, 0.48) var(--settings-range-fill),
+        rgba(91, 63, 37, 0.32) var(--settings-range-fill),
+        rgba(91, 63, 37, 0.32) 100%
+    ) !important;
+    border: 1px solid rgba(80, 44, 12, 0.34) !important;
+    border-radius: 999px !important;
+}
+
+.ps4-settings-shell .settings-range-accent::-webkit-slider-thumb {
+    background: rgba(248, 232, 188, 0.96) !important;
+    border: 1px solid rgba(80, 44, 12, 0.58) !important;
+    box-shadow: 0 1px 3px rgba(45, 24, 6, 0.32) !important;
+}
+
+.ps4-settings-shell .settings-range-accent::-moz-range-track {
+    background: rgba(91, 63, 37, 0.32) !important;
+    border: 1px solid rgba(80, 44, 12, 0.34) !important;
+    border-radius: 999px !important;
+}
+
+.ps4-settings-shell .settings-range-accent::-moz-range-progress {
+    background: var(--settings-gold-gradient-strong) !important;
+    border-radius: 999px !important;
+}
+
+.ps4-settings-shell .settings-range-accent::-moz-range-thumb {
+    background: rgba(248, 232, 188, 0.96) !important;
+    border: 1px solid rgba(80, 44, 12, 0.58) !important;
+    box-shadow: 0 1px 3px rgba(45, 24, 6, 0.32) !important;
+}
+
+.ps4-settings-shell .settings-range-accent:hover::-webkit-slider-thumb,
+.ps4-settings-shell .settings-range-accent:focus-visible::-webkit-slider-thumb,
+.ps4-settings-shell .controller-nav-focused.settings-range-accent::-webkit-slider-thumb {
+    background: var(--settings-gold-gradient-strong) !important;
+}
+
+.ps4-settings-shell .settings-range-accent:hover::-moz-range-thumb,
+.ps4-settings-shell .settings-range-accent:focus-visible::-moz-range-thumb,
+.ps4-settings-shell .controller-nav-focused.settings-range-accent::-moz-range-thumb {
+    background: var(--settings-gold-gradient-strong) !important;
+}
+
+.ps4-settings-shell h2.text-\[\#ffd67c\],
+.ps4-settings-shell h2.text-white\/50 {
+    color: #3f2a15 !important;
+    opacity: 1 !important;
+    text-shadow: 0 1px 0 rgba(255, 244, 200, 0.38);
+}
+
+.ps4-settings-shell h2.text-white\/50 {
+    opacity: 0.58 !important;
+}
+
+.ps4-settings-shell .settings-item-row[data-settings-info-key="hd-graphics-numeric"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 300px) minmax(0, 335px);
+    justify-content: center !important;
+    justify-items: stretch;
+    column-gap: 14px !important;
+    row-gap: 6px !important;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.ps4-settings-shell .settings-item-row[data-settings-info-key="hd-graphics-numeric"] > h2 {
+    min-width: 0;
+    max-width: 300px;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.ps4-settings-shell .settings-item-row[data-settings-info-key="hd-graphics-numeric"] > div {
+    min-width: 0;
+    max-width: 335px;
+    justify-content: flex-start !important;
+}
+
+.ps4-settings-shell .settings-item-row[data-settings-info-key="hd-graphics-numeric"] .settings-range-accent {
+    width: 210px !important;
+}
+
+.ps4-settings-shell .settings-item-row[data-settings-info-key="hd-graphics-numeric"] input.input.input-sm.input-primary {
+    width: 86px !important;
+}
+
+.ps4-settings-shell .settings-info-icon-image {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+
+.ps4-settings-shell .settings-info-branch-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 0;
+    margin: 0 0 10px;
+    max-width: 100%;
+    flex: 0 0 auto;
+    overflow: hidden;
+}
+
+.ps4-settings-shell .settings-info-branch-header-image {
+    width: 70px;
+    max-width: 100%;
+    height: 56px;
+    max-height: 56px;
+    object-fit: contain;
+}
+
+.ps4-settings-shell .settings-info-branch-strip {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 16px;
+    margin: 4px 0 18px;
+}
+
+.ps4-settings-shell .settings-info-branch-strip-image {
+    width: auto;
+    height: auto;
+    max-width: 56px;
+    max-height: 34px;
+    object-fit: contain;
+    filter: none;
+}
+
+.ps4-settings-shell .settings-info-version-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    margin: 0 0 10px;
+    max-width: 100%;
+    flex: 0 0 auto;
+    overflow: hidden;
+}
+
+.ps4-settings-shell .settings-info-version-header-image {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 82px;
+    object-fit: contain;
+}
+
+.ps4-settings-shell .settings-info-version-header-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: min(100%, 300px);
+    aspect-ratio: 642 / 421;
+    border: 1px solid rgba(255, 214, 124, 0.28);
+    background: rgba(247, 218, 152, 0.34);
+    color: rgba(63, 42, 21, 0.86);
+    font-size: 34px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+}
+
+.ps4-settings-shell .settings-local-back {
+    z-index: 26;
+}
+
+.ps4-settings-local-tag {
+    position: absolute;
+    left: 168px;
+    bottom: 22px;
+    z-index: 26;
+    color: #a0a0a0;
+    font-size: 15px;
+    line-height: 1;
+}
+
+.ps4-settings-shell .settings-nav-button.controller-nav-focused {
+    outline: 2px solid var(--controller-focus-color) !important;
+    outline-offset: 2px;
+    box-shadow: var(--controller-focus-glow) !important;
+}
+
+.ps4-version-label {
+    position: absolute;
+    top: 155px;
+    right: 244px;
+    font-size: 12px;
+    line-height: 1;
+    color: #dcdcdc;
+    z-index: 3;
+}
+
+.ps4-header-rail {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 99.5px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    padding-right: 116px;
+    background: transparent;
+    box-shadow: none;
+    z-index: 20;
+}
+
+.ps4-header-rail-title {
+    font-size: 13px;
+    line-height: 1;
+    color: #dfdfdf;
+    white-space: nowrap;
+}
+
+.ps4-header-rail-emblem {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+.ps4-header-rail-version {
+    font-size: 12px;
+    line-height: 1;
+    color: #dcdcdc;
+    white-space: nowrap;
+}
+
+.ps4-main {
+    position: absolute;
+    left: 64px;
+    top: 121px;
+    width: 1216px;
+    height: 508px;
+    box-sizing: border-box;
+    z-index: 5;
+}
+
+.ps4-connection-rail {
+    position: absolute;
+    top: -21.5px;
+    right: 720px;
+    width: auto;
+    max-width: 320px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    text-align: right;
+    line-height: 1;
+    white-space: nowrap;
+    z-index: 26;
+    pointer-events: auto;
+}
+
+.ps4-left-column {
+    position: absolute;
+    left: -20px;
+    top: 0;
+    width: 496px;
+    height: 508px;
+    z-index: 6;
+}
+
+.ps4-stage-card {
+    width: 496px;
+    min-height: 326px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    box-sizing: border-box;
+}
+
+.ps4-banner-card {
+    position: absolute;
+    width: 349px;
+    left: 83px;
+    top: 352px;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    z-index: 7;
+}
+
+.ps4-banner-title-shell {
+    position: relative;
+    width: 349px;
+    min-height: 29px;
+    margin-bottom: 12px;
+}
+
+.ps4-banner-divider {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 29px;
+    object-fit: fill;
+}
+
+.ps4-banner-title {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 29px;
+    padding: 0 12px 0 21px;
+    color: #cfbf73;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+}
+
+.ps4-banner-shell {
+    display: block;
+}
+
+.ps4-banner-image {
+    width: 343px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    box-shadow: 0 5px 5px rgba(0, 0, 0, 0.75);
+}
+
+.ps4-banner-dots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.ps4-banner-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.75);
+}
+
+.ps4-news-panel {
+    position: absolute;
+    right: 0;
+    top: 0px;
+    width: 720px;
+    height: 500px;
+    padding: 10px 18px 14px 12px;
+    border-radius: 8px 0 0 8px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 0;
+    box-shadow: none;
+    box-sizing: border-box;
+    z-index: 4;
+    overflow: hidden;
+}
+
+.ps4-news-panel-compact {
+    width: 688px;
+}
+
+.ps4-news-scroll-shell {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding-right: 18px;
+    overflow: hidden;
+}
+
+.ps4-news-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    padding-left: 9px;
+}
+
+.ps4-message-box.controller-nav-focused {
+    outline: none !important;
+    border-color: transparent !important;
+    box-shadow: inset 0 0 0 1px var(--controller-focus-color) !important;
+    background: transparent !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+}
+
+.ps4-news-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.ps4-news-scrollbar {
+    position: absolute;
+    top: 8px;
+    right: 0;
+    bottom: 8px;
+    width: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.ps4-news-scrollbar-button {
+    width: 14px;
+    height: 21px;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-size: 14px 42px;
+    cursor: pointer;
+}
+
+.ps4-news-scrollbar-button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.ps4-news-scrollbar-up {
+    background-image: url("/ps4/ThinUpArrow.png");
+    background-position: top center;
+}
+
+.ps4-news-scrollbar-up:hover:not(:disabled) {
+    background-position: bottom center;
+}
+
+.ps4-news-scrollbar-down {
+    background-image: url("/ps4/ThinDownArrow.png");
+    background-position: top center;
+}
+
+.ps4-news-scrollbar-down:hover:not(:disabled) {
+    background-position: bottom center;
+}
+
+.ps4-news-scrollbar-track {
+    position: relative;
+    flex: 1;
+    width: 8px;
+    border-radius: 999px;
+    background: rgba(208, 216, 228, 0.24);
+    outline: 1px solid rgba(20, 27, 36, 0.75);
+}
+
+.ps4-news-scrollbar-thumb {
+    position: absolute;
+    left: 1px;
+    width: 6px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #e2e7f2 0%, #b5bfd0 100%);
+}
+
+.ps4-message-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ps4-message-title-shell {
+    position: relative;
+    min-height: 29px;
+}
+
+.ps4-message-divider {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 29px;
+    object-fit: fill;
+}
+
+.ps4-message-title {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 29px;
+    padding: 0 12px 0 21px;
+    background: transparent;
+    color: #d6c8a8;
+    font-size: 16px;
+    line-height: 1.2;
+}
+
+.ps4-message-title-important {
+    color: #f4cf69;
+}
+
+.ps4-message-empty {
+    padding: 8px 14px 2px 23px;
+    color: #98a39d;
+    font-size: 13px;
+}
+
+.ps4-message-row {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) 56px;
+    align-items: start;
+    gap: 8px;
+    padding: 6px 2px 6px 23px;
+    border-radius: 4px;
+    color: #d1c0a5;
+}
+
+.ps4-message-row:hover {
+    background: rgba(13, 32, 28, 0.72);
+}
+
+.ps4-message-row-important {
+    color: #f4c833;
+}
+
+.ps4-message-date {
+    color: #96a1a0;
+    font-size: 12px;
+    line-height: 1.35;
+    padding-top: 1px;
+}
+
+.ps4-message-link {
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.ps4-message-link:hover {
+    color: #fff9da;
+}
+
+.ps4-message-badge {
+    display: flex;
+    justify-content: flex-end;
+    margin-right: -4px;
+}
+
+.ps4-message-new {
+    width: 64px;
+    height: 18px;
+    object-fit: contain;
+}
+
+.ps4-footer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 91px;
+    display: flex;
+    align-items: flex-start;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 20;
+}
+
+.ps4-footer-brand {
+    position: absolute;
+    left: 127px;
+    top: 6px;
+    width: max-content;
+    max-width: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 12px;
+    overflow: visible;
+}
+
+.ps4-footer-brand-settings {
+    left: 168px;
+    width: auto;
+    gap: 14px;
+    justify-content: flex-start;
+}
+
+.ps4-settings-button {
+    position: absolute;
+    left: 157px;
+    top: 43px;
+    width: 285px;
+    height: 32px;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    background-image: url("/ps4/Settings.png");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    cursor: pointer;
+    z-index: 24;
+}
+
+.ps4-settings-button:hover {
+    background-image: url("/ps4/SettingsHover.png");
+}
+
+.ps4-settings-button-back {
+    position: absolute;
+    left: 18px;
+    bottom: 14px;
+    top: auto;
+    width: 132px;
+    height: 32px;
+    background-image: none;
+    background: rgba(0, 0, 0, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+}
+
+.ps4-settings-button-back:hover {
+    background-image: none;
+    background: rgba(18, 18, 18, 0.9);
+    border-color: rgba(255, 255, 255, 0.28);
+}
+
+.ps4-settings-button-back-label {
+    color: #ffffff;
+    font-size: 1.2rem;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+    pointer-events: none;
+}
+
+.ps4-footer-logo {
+    position: static;
+    flex: 0 0 auto;
+    object-fit: contain;
+}
+
+.ps4-footer-capcom {
+    width: auto;
+    height: 31px;
+}
+
+.ps4-footer-cog {
+    width: 107px;
+    height: 29px;
+}
+
+.ps4-footer-tag {
+    position: static;
+    font-size: 15px;
+    line-height: 1;
+    color: #a0a0a0;
+    padding-top: 6px;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    min-width: max-content;
+    max-width: none;
+}
+
+.ps4-settings-page {
+    position: absolute;
+    inset: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+}
+
+.ps4-mail-shell {
+    position: absolute;
+    top: 10px;
+    right: -15px;
+    z-index: 28;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    flex-direction: row-reverse;
+    gap: 10px;
+}
+
+.ps4-mail-shell-icons {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    flex-direction: row-reverse;
+    gap: 10px;
+}
+
+.ps4-mail-shell-loading {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ps4-mail-shell-loading .ps4-mail-button {
+    animation: none !important;
+}
+
+.ps4-mail-button {
+    position: relative;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    animation: character-page-pop-in 240ms cubic-bezier(0.18, 0.82, 0.28, 1) both;
+}
+
+.ps4-book-button {
+    flex: 0 0 32px;
+}
+
+.ps4-mail-button-image {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: auto;
+    object-fit: contain;
+}
+
+.ps4-mail-button-image-closed {
+    height: 26px;
+    opacity: 1;
+}
+
+.ps4-mail-button-image-open {
+    height: 32px;
+    opacity: 0;
+}
+
+.ps4-mail-button-counts {
+    position: absolute;
+    left: 50%;
+    top: -9px;
+    transform: translateX(-50%);
+    z-index: 2;
+    color: #fff !important;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    transition: opacity 150ms ease;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.ps4-mail-button:hover .ps4-mail-button-image-closed,
+.ps4-mail-button.ps4-mail-button-active .ps4-mail-button-image-closed {
+    opacity: 0;
+}
+
+.ps4-mail-button:hover .ps4-mail-button-image-open,
+.ps4-mail-button.ps4-mail-button-active .ps4-mail-button-image-open {
+    opacity: 1;
+}
+
+.ps4-mail-button:hover .ps4-mail-button-counts,
+.ps4-mail-button.ps4-mail-button-active .ps4-mail-button-counts {
+    opacity: 0;
+}
+
+.ps4-distribution-button-image-closed {
+    height: 27px;
+    opacity: 1;
+}
+
+.ps4-distribution-button-image-open {
+    height: 32px;
+    opacity: 0;
+}
+
+.ps4-distribution-button-count {
+    position: absolute;
+    left: 50%;
+    top: -9px;
+    transform: translateX(-50%);
+    z-index: 2;
+    color: #fff !important;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    transition: opacity 150ms ease;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.ps4-friends-button-image-closed {
+    height: 28px;
+    opacity: 1;
+}
+
+.ps4-friends-button-image-open {
+    height: 32px;
+    opacity: 0;
+}
+
+.ps4-friends-button-no-count {
+    margin-left: 0px;
+    margin-right: -6px;
+}
+
+.ps4-friends-button-no-count .ps4-mail-button-image {
+    top: calc(50% - 2px);
+}
+
+.ps4-friends-button-count {
+    position: absolute;
+    left: 50%;
+    top: -9px;
+    transform: translateX(-50%);
+    z-index: 2;
+    color: #fff !important;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    transition: opacity 150ms ease;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.5);
+    margin-left: 0px;
+    margin-right: -6px;
+}
+
+.ps4-distribution-button:hover .ps4-distribution-button-image-closed,
+.ps4-distribution-button.ps4-distribution-button-active .ps4-distribution-button-image-closed {
+    opacity: 0;
+}
+
+.ps4-distribution-button:hover .ps4-distribution-button-image-open,
+.ps4-distribution-button.ps4-distribution-button-active .ps4-distribution-button-image-open {
+    opacity: 1;
+}
+
+.ps4-distribution-button:hover .ps4-distribution-button-count,
+.ps4-distribution-button.ps4-distribution-button-active .ps4-distribution-button-count {
+    opacity: 0;
+}
+
+.ps4-friends-button:hover .ps4-friends-button-image-closed,
+.ps4-friends-button.ps4-friends-button-active .ps4-friends-button-image-closed {
+    opacity: 0;
+}
+
+.ps4-friends-button:hover .ps4-friends-button-image-open,
+.ps4-friends-button.ps4-friends-button-active .ps4-friends-button-image-open {
+    opacity: 1;
+}
+
+.ps4-friends-button:hover .ps4-friends-button-count,
+.ps4-friends-button.ps4-friends-button-active .ps4-friends-button-count {
+    opacity: 0;
+}
+
+.ps4-book-button-image-closed {
+    width: 22px;
+    height: 22px;
+    opacity: 1;
+}
+
+.ps4-book-button-image-open {
+    width: 28px;
+    height: 28px;
+    opacity: 0;
+}
+
+.ps4-book-button:hover .ps4-book-button-image-closed,
+.ps4-book-button.ps4-book-button-active .ps4-book-button-image-closed {
+    opacity: 0;
+}
+
+.ps4-book-button:hover .ps4-book-button-image-open,
+.ps4-book-button.ps4-book-button-active .ps4-book-button-image-open {
+    opacity: 1;
+}
+
+.ps4-mail-panel {
+    position: absolute;
+    top: 32px;
+    right: -8px;
+    width: 336px;
+    max-height: 248px;
+    overflow: auto;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: #000000f0;
+    padding: 10px 12px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.45);
+}
+
+.ps4-login-panel {
+    position: relative;
+    z-index: 8;
+    display: block;
+    height: 100%;
+}
+
+.ps4-login-section-label {
+    display: none;
+}
+
+.ps4-login-frame {
+    width: 490px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    margin-top: 72px;
+}
+
+.ps4-login-top-row {
+    display: grid;
+    grid-template-columns: 168px 168px;
+    gap: 12px;
+    align-items: start;
+    width: 348px;
+    margin-left: 83px;
+}
+
+.ps4-login-subrow {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 348px;
+    height: 0;
+    margin-left: 83px;
+    padding-left: 110px;
+    margin-top: -1px;
+    z-index: 2;
+}
+
+.ps4-login-middle-row {
+    display: grid;
+    grid-template-columns: 168px 168px;
+    gap: 12px;
+    align-items: end;
+    width: 348px;
+    margin-left: 83px;
+    position: relative;
+    z-index: 18;
+}
+
+.ps4-login-side-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 0;
+    min-height: 59px;
+}
+
+.ps4-login-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.ps4-login-field-label {
+    color: #e6ddb8;
+    font-size: 13px;
+    line-height: 1.1;
+}
+
+.ps4-login-input,
+.ps4-server-picker {
+    width: 100%;
+    height: 40px;
+    border: 1px solid rgba(151, 168, 159, 0.2);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.42);
+    color: #ffffff;
+    padding: 0 10px;
+    font-size: 13px;
+}
+
+.ps4-login-input:focus,
+.ps4-server-picker:focus {
+    border-color: rgba(126, 204, 255, 0.72);
+    box-shadow: 0 0 0 1px rgba(126, 204, 255, 0.32);
+}
+
+.ps4-server-picker-wrap {
+    position: relative;
+    z-index: 30;
+}
+
+.ps4-server-picker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ps4-server-dropdown {
+    position: absolute;
+    top: calc(100% + 0px);
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-radius: 0;
+    background: #000000f0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.42);
+    z-index: 40;
+}
+
+.ps4-server-dropdown-group + .ps4-server-dropdown-group {
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ps4-server-option {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 36px;
+    min-width: 0;
+}
+
+.ps4-server-option-no-gear {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.ps4-server-option-main,
+.ps4-server-option-gear,
+.ps4-server-option-add {
+    min-height: 34px;
+    background: transparent;
+    color: #e7eee8;
+    border: 0;
+}
+
+.ps4-server-option-main,
+.ps4-server-option-add {
+    padding: 0 12px;
+    text-align: left;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ps4-server-option-add {
+    width: 100%;
+}
+
+.ps4-server-option-main:hover,
+.ps4-server-option-gear:hover,
+.ps4-server-option-add:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.ps4-server-option-gear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ps4-login-actions {
+    display: none;
+}
+
+.ps4-start-button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 349px;
+    height: 79px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    overflow: hidden;
+    color: #f6f8fb;
+    font-size: 27px;
+    letter-spacing: 0.08em;
+    text-transform: none;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.65);
+}
+
+.ps4-start-button::before,
+.ps4-server-option-add::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--button-image, url("/ps4/Button.png"));
+    background-repeat: no-repeat;
+    background-size: 349px 164px;
+    background-position: center 0;
+    pointer-events: none;
+}
+
+.ps4-start-button:hover:not(:disabled)::before,
+.ps4-server-option-add:hover:not(:disabled)::before {
+    background-position: center -82px;
+}
+
+.ps4-server-option-add {
+    --button-image: url("/ps4/Button.png");
+}
+
+.ps4-server-option-add.no-button-image::before {
+    display: none !important;
+}
+
+.ps4-login-button-row {
+    display: flex;
+    justify-content: flex-start;
+    padding-top: 2px;
+    width: 349px;
+    margin-left: 83px;
+}
+
+.ps4-start-button-label {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.ps4-register-link {
+    min-width: 168px;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.52);
+    color: #d8dfdb;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.ps4-register-link:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.ps4-register-link.controller-nav-focused {
+    border-color: transparent !important;
+}
+
+.ps4-remember-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #c9d2cc;
+    font-size: 11px;
+    white-space: nowrap;
+    position: absolute;
+    left: 116px;
+    top: -5px;
+}
+
+.ps4-character-stage {
+    transform: scale(0.9);
+    transform-origin: top center;
+    margin-top: 68px;
+}
+
+.ps4-character-carousel {
+    position: relative;
+    width: 520px;
+    margin-top: 0;
+    top: -14px;
+}
+
+.ps4-character-nav {
+    position: absolute;
+    top: 16px;
+    z-index: 30;
+    display: block;
+    width: 36px;
+    height: 143px;
+}
+
+.ps4-character-nav-left {
+    left: -40px;
+}
+
+.ps4-character-nav-right {
+    right: -40px;
+}
+
+.ps4-character-nav-button {
+    width: 36px;
+    height: 27px;
+    border: 0;
+    padding: 0;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-size: 36px 54px;
+    cursor: pointer;
+}
+
+.ps4-character-nav-up {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-image: url("/ps4/UpArrow.png");
+    background-position: top center;
+}
+
+.ps4-character-nav-up:hover {
+    background-position: bottom center;
+}
+
+.ps4-character-nav-down {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    background-image: url("/ps4/DownArrow.png");
+    background-position: top center;
+}
+
+.ps4-character-nav-down:hover {
+    background-position: bottom center;
+}
+
+.ps4-character-actions {
+    transform: scale(0.9);
+    transform-origin: top center;
+    margin-top: -24px;
+    width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.ps4-character-action-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 520px;
+    margin-top: 0;
+}
+
+.ps4-character-start-row {
+    display: flex;
+    justify-content: center;
+    width: 520px;
+    margin-top: 12px;
+}
+
+.ps4-character-start-button {
+    width: 349px;
+    height: 79px;
+}
+
+.alt-panel-icon-button {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.alt-panel-icon-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.ps4-footer-panels {
+    position: absolute;
+    right: 12px;
+    top: 6px;
+    bottom: auto;
+    gap: 12px;
+    z-index: 24;
+    animation: character-page-pop-in 240ms cubic-bezier(0.18, 0.82, 0.28, 1) both;
+}
+
+.ps4-mail-shell .ps4-mail-button:nth-child(2) {
+    animation-delay: 35ms;
+}
+
+.ps4-mail-shell .ps4-mail-button:nth-child(3) {
+    animation-delay: 70ms;
+}
+
+.ps4-mail-shell .ps4-mail-button:nth-child(4) {
+    animation-delay: 105ms;
+}
+
+.ps4-event-badge-button {
+    position: relative;
+    z-index: 30;
+    width: 55px;
+    height: 55px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    animation: character-page-pop-in 240ms cubic-bezier(0.18, 0.82, 0.28, 1) both;
+}
+
+.ps4-event-badge-button:nth-child(2) {
+    animation-delay: 35ms;
+}
+
+.ps4-event-badge-button:nth-child(3) {
+    animation-delay: 70ms;
+}
+
+.ps4-event-badge-button:nth-child(4) {
+    animation-delay: 105ms;
+}
+
+.ps4-event-badge-button:nth-child(5) {
+    animation-delay: 140ms;
+}
+
+.ps4-event-badge-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.7));
+}
+
+.ps4-event-badge-button:hover .ps4-event-badge-image {
+    filter: drop-shadow(0 0 10px rgba(255, 214, 124, 0.72));
+}
+
+.ps4-alt-panel-icon-button {
+    width: 31px;
+    height: 31px;
+}
+
+.ps4-alt-panel-icon-image {
+    width: 100%;
+    height: 100%;
+}
+
+.ps4-character-secondary-button {
+    min-width: 194px;
+    min-height: 42px;
+    padding: 0 18px;
+    border: 1px solid rgba(160, 176, 171, 0.22);
+    border-radius: 999px;
+    background: rgba(5, 13, 11, 0.52);
+    color: #d8dfdb;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.ps4-character-secondary-button:hover {
+    background: rgba(15, 34, 29, 0.92);
+    color: #ffffff;
+}
+
+.ps4-character-options-shell {
+    position: relative;
+    margin-right: 18px;
+    padding: 0;
+}
+
+.ps4-character-options-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 42px;
+    padding: 0 16px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    outline: 0;
+    text-transform: uppercase;
+}
+
+.ps4-character-options-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: #000000f0;
+    width: 100%;
+    border-radius: 0;
+    z-index: 12;
+    overflow: hidden;
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.45);
+}
+
+.ps4-shell .character {
+    position: relative;
+    animation-duration: 300ms;
+}
+
+.ps4-shell .character-1 {
+    filter: brightness(0.3);
+}
+
+.ps4-shell .character-2 {
+    filter: brightness(0.15);
+}
+
+@keyframes character {
+    0% { top: 20px }
+    30% { top: 8px }
+    60% { top: 1px }
+    80% { top: 3px }
+    100% { top: 0 }
+}
+
+.ps4-shell .character.character-animation {
+    animation-name: character;
+}
+
+@keyframes character-reverse {
+    0% { bottom: 20px }
+    30% { bottom: 8px }
+    60% { bottom: 1px }
+    80% { bottom: 3px }
+    100% { bottom: 0 }
+}
+
+.ps4-shell .character.character-animation-reverse {
+    animation-name: character-reverse;
+}
+
+@keyframes character-1 {
+    0% { top: 10px }
+    30% { top: 4px }
+    60% { top: 1px }
+    80% { top: 2px }
+    100% { top: 0 }
+}
+
+.ps4-shell .character-1.character-animation {
+    animation-name: character-1;
+}
+
+@keyframes character-1-reverse {
+    0% { bottom: 10px }
+    30% { bottom: 4px }
+    60% { bottom: 1px }
+    80% { bottom: 2px }
+    100% { bottom: 0 }
+}
+
+.ps4-shell .character-1.character-animation-reverse {
+    animation-name: character-1-reverse;
+}
+
+@keyframes character-2 {
+    0% { top: 5px }
+    30% { top: 2px }
+    60% { top: 0px }
+    80% { top: 1px }
+    100% { top: 0 }
+}
+
+.ps4-shell .character-2.character-animation {
+    animation-name: character-2;
+}
+
+@keyframes character-2-reverse {
+    0% { bottom: 20px }
+    30% { bottom: 2px }
+    60% { bottom: 0px }
+    80% { bottom: 1px }
+    100% { bottom: 0 }
+}
+
+.ps4-shell .character-2.character-animation-reverse {
+    animation-name: character-2-reverse;
+}
+
+.ps4-settings-enter-active {
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+.ps4-settings-leave-active {
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+.ps4-settings-enter-from,
+.ps4-settings-leave-to {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.ps4-shell .sidescrollfix {
+    overflow: hidden;
+}
+
+.eventpaneltext {
+    position: absolute;
+    bottom: 62px;
+    right: -8px;
+    z-index: 120;
+    width: 300px;
+    height: 215px;
+    background-image: url(/extra/DistroEntry.png);
+    background-size: contain;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    color: #3a2410;
+    font-weight: 700;
+}
+
+.eventpaneltextLabel {
+    font-size: 1.2rem;
+    position: relative;
+    margin-bottom: -4px;
+    text-align: center;
+    transform: translateY(-10px);
+}

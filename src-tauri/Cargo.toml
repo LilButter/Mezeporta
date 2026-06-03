@@ -1,0 +1,52 @@
+[package]
+name = "app"
+version = "1.5.2"
+description = "Mezeporta"
+authors = ["LilButter"]
+license = ""
+repository = ""
+default-run = "app"
+edition = "2021"
+rust-version = "1.57"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_repr = "0.1"
+reqwest = { version = "0.11", features = ["json", "gzip"] }
+keyring = "2"
+sha2 = "0.10"
+base64 = "0.22"
+configparser = "1.0"
+tokio = { version = "1", features = ["macros"] }
+tokio-util = { version = "0.7", features = [] }
+tauri = { version = "1.5", features = ["api-all"] }
+tauri-plugin-store = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+
+meze-butter = { path = "./meze-butter" }
+
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.52"
+features = ["Win32_System_WindowsProgramming", "Win32_Foundation", "Win32_System_Threading", "Win32_Security", "Win32_UI_WindowsAndMessaging"]
+
+[features]
+# by default Tauri runs in production mode
+# when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
+default = ["custom-protocol"]
+# this feature is used for production builds where `devPath` points to the filesystem
+# DO NOT remove this
+custom-protocol = ["tauri/custom-protocol"]
+
+[patch.crates-io]
+wry = { path = "./vendor/wry" }
+webkit2gtk-sys = { path = "./vendor/webkit2gtk-sys" }
+javascriptcore-rs-sys = { path = "./vendor/javascriptcore-rs-sys" }
+wl-clipboard-rs = { path = "./vendor/wl-clipboard-rs" }

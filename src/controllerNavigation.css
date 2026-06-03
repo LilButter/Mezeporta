@@ -1,0 +1,40 @@
+.controller-nav-focused {
+  position: relative;
+  z-index: 2;
+  overflow: visible !important;
+  outline: 2px solid var(--controller-focus-color) !important;
+  outline-offset: 2px;
+  border-color: var(--controller-focus-color) !important;
+  box-shadow: var(--controller-focus-glow) !important;
+}
+
+input[type="range"].controller-nav-focused {
+  outline: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.settings-shell .controller-nav-focused {
+  outline: 2px solid var(--controller-focus-color) !important;
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 1px rgba(60, 38, 15, 0.45),
+    var(--controller-focus-glow) !important;
+  filter: brightness(1.08);
+}
+
+.settings-shell input[type="range"].settings-range-accent.controller-nav-focused {
+  filter: drop-shadow(0 0 5px rgba(255, 214, 124, 0.8));
+}
+
+.settings-shell input[type="range"].settings-range-accent.controller-nav-focused::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 2px rgba(56, 34, 11, 0.9),
+    0 0 10px rgba(255, 214, 124, 0.9) !important;
+}
+
+.settings-shell input[type="range"].settings-range-accent.controller-nav-focused::-moz-range-thumb {
+  box-shadow:
+    0 0 0 2px rgba(56, 34, 11, 0.9),
+    0 0 10px rgba(255, 214, 124, 0.9) !important;
+}
