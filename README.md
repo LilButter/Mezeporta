@@ -3,24 +3,47 @@ Mezeporta is a Monster Hunter Frontier launcher for community servers supporting
 ##
 ### How to run
 
-Windows & Linux: place the launcher files in your game directory next to /dat folder from the release page _https://github.com/LilButter/Mezeporta/releases_
-
+Windows & Linux: place the launcher files in your game directory next to /dat folder from the release page 
 
 Your folder should look like this:
-- /dat
-- Mezeporta.exe
-- mhf.ini
-- mhfo.dll
-- xinput1_3.dll
+
+Windows:
+```text
+GameFolder/
+  /dat
+  Mezeporta.exe
+  mhf.ini
+  mhfo.dll
+  xinput1_3.dll
+```
 
 Or Linux:
-- /dat
-- /Mezeporta
-- mezeporta-bin
-- run-mezeporta.sh
-- mhf.ini
-- mhfo.dll
-- xinput1_3.dll
+```text
+GameFolder/
+  /dat
+  /Mezeporta
+  mezeporta-bin
+  run-mezeporta.sh
+  mhf.ini
+  mhfo.dll
+  xinput1_3.dll
+```
+
+chmod both run-mezeporta & mezeporta-bin:
+```bash
+sudo chmod +x run-mezeporta.sh
+```
+
+```bash
+sudo chmod +x mezeporta-bin
+```
+
+Launch command:
+```bash
+./run-mezeporta.sh
+```
+
+_FOR S7K version move ALL files from the provided folder into the game directory with the launcher._
 
 ##
 ### Server Wrapper (Server Owners)
