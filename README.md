@@ -48,7 +48,7 @@ _FOR S7K version move ALL files from the provided folder into the game directory
 ##
 ### Server Wrapper (Server Owners)
 
-The wrapper is a separate helper for Erupe servers and is required for this launcher.
+The wrapper is a separate helper for Erupe servers and is required for this launcher to work.
 
 Wrapper link: _https://github.com/LilButter/Mezeporta-Wrapper_.
 
