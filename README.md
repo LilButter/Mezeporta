@@ -1,4 +1,4 @@
-Mezeporta is a Monster Hunter Frontier launcher for community servers supporting 19 versions across all game branches.
+Mezeporta is a MHF launcher for Erupe community servers supporting 19 versions across all game branches.
 
 ##
 ### How to run
@@ -55,12 +55,12 @@ Wrapper link: _https://github.com/LilButter/Mezeporta-Wrapper_.
 ##
 ### Version Support
 
-| Branch | Versions | Notes |
-| --- | --- | --- |
-| Online | S6, S7K | Season 6 (JP) and Season 7 (KR). |
-| Forward | F4, F5 | Forward 4 (JP) and Forward 5 (JP). |
-| G | G1, G2, G3, G3.1, G3.2, GG, G5.1, G5.2, G6, G7, G9.1, G10.1 | Monster Hunter Frontier G, G1 through G10.1 (JP). |
-| Z | Z1, ZZ | Monster Hunter Frontier Z, Z1 and ZZ (JP). |
+| Branch | Versions
+| --- | --- |
+| Online | S6, S7K |
+| Forward | F4, F5 |
+| G | G1, G2, G3, G3.1, G3.2, GG, G5.1, G5.2, G6, G7, G9.1, G10.1 
+| Z | Z1, ZZ |
 
 
 ##
