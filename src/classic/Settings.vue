@@ -174,7 +174,7 @@ const currentInfo = computed(() => {
     body = isLinuxHost.value
       ? t(
           "settings-info-controller-fix-linux-body",
-          "Applies Wine DLL overrides for xinput1_3, dinput, and d8input."
+          "Applies Wine DLL overrides for xinput1_3, dinput, and dinput8."
         )
       : t(
           "settings-info-controller-fix-windows-body",

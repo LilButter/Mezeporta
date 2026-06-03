@@ -60,7 +60,7 @@ const GAME_VERSION_DISPLAY_LABELS = {
 };
 const SOUND_LEVEL_OPTIONS = Array.from({ length: 8 }, (_, index) => index);
 const SAMPLE_RATE_OPTIONS = [11025, 22050, 44100, 48000];
-const CONTROLLER_DLL_NAMES = ["xinput1_3.dll", "d8input.dll", "dinput.dll"];
+const CONTROLLER_DLL_NAMES = ["XInput1_3.dll", "Dinput.dll", "Dinput8.dll"];
 const RESOLUTION_OPTIONS = [
   { width: 640, height: 480, value: "640x480", label: "640x480" },
   { width: 800, height: 480, value: "800x480", label: "800x480" },

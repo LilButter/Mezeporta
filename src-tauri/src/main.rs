@@ -102,7 +102,7 @@ const WINE_DLL_OVERRIDES_KEY: &str = r"HKCU\Software\Wine\DllOverrides";
 #[cfg(not(windows))]
 const CONTROLLER_DLL_OVERRIDE_VALUE: &str = "native,builtin";
 #[cfg(not(windows))]
-const CONTROLLER_DLL_OVERRIDE_NAMES: [&str; 3] = ["xinput1_3", "dinput", "d8input"];
+const CONTROLLER_DLL_OVERRIDE_NAMES: [&str; 3] = ["xinput1_3", "dinput", "dinput8"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct LauncherWindowSize {
