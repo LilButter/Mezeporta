@@ -165,9 +165,9 @@ Mezeporta has multi-server patch support!
 ## 
 ### Unpacking Dlls
 
-To unpack the dlls you need [OllyDbg](https://ollydbg.net/download.htm)
+To unpack the dlls use [OllyDbg](https://ollydbg.net/download.htm)
 
-You will also need [CodeDoctor](https://github.com/JackAston/OllyDbg1plugins/tree/master/CodeDoctor%20v0.90) plugin.
+You will also need the [CodeDoctor](https://github.com/JackAston/OllyDbg1plugins/tree/master/CodeDoctor%20v0.90) plugin.
 - Step 1: Move `CodeDoctor.dll` and `CodeDoctor.ini` into `OllyDbg/Plugins` folder.
 - Step 2: Open OllyDbg and load the game dll.
 - Step 3: Navigate to `Plugins` then `CodeDoctor` and select `Unpack AsProtect`.
