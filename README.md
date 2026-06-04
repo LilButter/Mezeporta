@@ -3,6 +3,9 @@ Mezeporta is a MHF launcher for Erupe community servers supporting 19 versions a
 ##
 ### How to run
 
+> [!NOTE]
+> Game Dlls must be [unpacked](#unpacking-dlls) for the launcher to work.
+
 Windows & Linux: place the launcher files in your game directory next to /dat folder from the release page 
 
 Your folder should look like this:
@@ -48,9 +51,7 @@ _FOR S7K version move ALL files from the provided folder into the game directory
 ##
 ### Server Wrapper (Server Owners)
 
-The wrapper is a separate helper for Erupe servers and is required for this launcher to work.
-
-Wrapper link: _https://github.com/LilButter/Mezeporta-Wrapper_.
+The [Wrapper](https://github.com/LilButter/Mezeporta-Wrapper) is a separate helper for Erupe servers and is required for this launcher to work.
 
 ##
 ### Version Support
@@ -160,6 +161,18 @@ Mezeporta has multi-server patch support!
 - Renames any original files to have the extension .mezeold (if previously patched, it will restore to original files first before applying the new patch)
 - Downloads missing or outdated files provided by the wrapper.
 - Caches patch files under Mezeporta/Servers
+
+## 
+### Unpacking Dlls
+
+To unpack the dlls you need [OllyDbg](https://ollydbg.net/download.htm)
+
+You will also need [CodeDoctor](https://github.com/JackAston/OllyDbg1plugins/tree/master/CodeDoctor%20v0.90) plugin.
+- Step 1: Move `CodeDoctor.dll` and `CodeDoctor.ini` into `OllyDbg/Plugins` folder.
+- Step 2: Open OllyDbg and load the game dll.
+- Step 3: Navigate to `Plugins` then `CodeDoctor` and select `Unpack AsProtect`.
+- Step 4: Move the unpacked dll into the game folder.
+- Step 5: Happy Hunting!
 
 
 ## 
