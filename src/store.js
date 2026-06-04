@@ -365,13 +365,29 @@ export function logMessage(level, message, args) {
   });
 }
 
+function isBlankConfiguredPort(value) {
+  return (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim() === "")
+  );
+}
+
 function normalizeConfiguredPort(value) {
-  if (value === null || value === undefined || value === "") return null;
+  if (isBlankConfiguredPort(value)) return null;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return null;
   const port = Math.trunc(parsed);
   if (port <= 0 || port > 65535) return null;
   return port;
+}
+
+const DEFAULT_LAUNCHER_PORT = 8080;
+const DEFAULT_GAME_PORT = 53310;
+
+function normalizeDialogPort(value, fallback) {
+  if (isBlankConfiguredPort(value)) return fallback;
+  return normalizeConfiguredPort(value);
 }
 
 function defaultPortFromProtocol(protocol) {
@@ -2968,24 +2984,37 @@ export async function dialogRemoveEndpoint() {
   storePrivate.dialogOpen = false;
 }
 export async function dialogSaveEndpoint() {
-    if (storePrivate.dialogLoading) return;
-    let endpoints = editEndpointRemote
-      ? storePrivate.remoteEndpoints
-      : storePrivate.endpoints;
-    endpoints = [...endpoints];
-    const newEndpoint = { ...storeMut.editEndpoint };
-    endpoints[editEndpointIndex] = newEndpoint;
-    await hanldeDialogClose(
-      async () => {
-        await setEndpoints(endpoints, editEndpointRemote);
-        if (!editEndpointRemote && editEndpointIndex === endpoints.length - 1) {
-          await setCurrentEndpoint(newEndpoint);
-        } else if (editEndpointRemote && editEndpointIndex === storePrivate.remoteEndpoints.length - 1) {
-          await setCurrentEndpoint(newEndpoint);
-        }
-      }
+  if (storePrivate.dialogLoading) return;
+  let endpoints = editEndpointRemote
+    ? storePrivate.remoteEndpoints
+    : storePrivate.endpoints;
+  endpoints = [...endpoints];
+  const newEndpoint = { ...storeMut.editEndpoint };
+  if (!newEndpoint.isRemote) {
+    newEndpoint.launcherPort = normalizeDialogPort(
+      newEndpoint.launcherPort,
+      DEFAULT_LAUNCHER_PORT
+    );
+    newEndpoint.gamePort = normalizeDialogPort(
+      newEndpoint.gamePort,
+      DEFAULT_GAME_PORT
     );
   }
+  endpoints[editEndpointIndex] = newEndpoint;
+  await hanldeDialogClose(
+    async () => {
+      await setEndpoints(endpoints, editEndpointRemote);
+      if (!editEndpointRemote && editEndpointIndex === endpoints.length - 1) {
+        await setCurrentEndpoint(newEndpoint);
+      } else if (
+        editEndpointRemote &&
+        editEndpointIndex === storePrivate.remoteEndpoints.length - 1
+      ) {
+        await setCurrentEndpoint(newEndpoint);
+      }
+    }
+  );
+}
 
 export function dialogDeleteCharacter(character) {
   storePrivate.deleteCharacter = character;
@@ -3455,15 +3484,20 @@ async function setCurrentEndpointWithOptions(currentEndpoint, options = {}) {
 
 export async function closeLauncher() {
   const forceClose = () => appWindow.close().catch(() => {});
+  let shutdownHandled = false;
   try {
     await Promise.race([
-      handleInvoke("shutdown_launcher"),
+      handleInvoke("shutdown_launcher").then(() => {
+        shutdownHandled = true;
+      }),
       new Promise((resolve) => setTimeout(resolve, 1500)),
     ]);
   } catch (_error) {
     // ignore and fall through to force close
   }
-  await forceClose();
+  if (!shutdownHandled) {
+    await forceClose();
+  }
 }
 
 export function addPlaceholderCharacter() {

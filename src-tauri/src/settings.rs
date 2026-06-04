@@ -304,11 +304,23 @@ fn ensure_ini_file(folder: &Path) -> PathBuf {
     if !ini_path.exists() {
         if let Some(parent) = ini_path.parent() {
             if let Err(err) = fs::create_dir_all(parent) {
-                warn!("failed to create config folder {}: {}", parent.display(), err);
+                warn!(
+                    "failed to create config folder {}: {}",
+                    parent.display(),
+                    err
+                );
             }
         }
-        if let Err(err) = fs::OpenOptions::new().create(true).append(true).open(&ini_path) {
-            warn!("failed to create config file {}: {}", ini_path.display(), err);
+        if let Err(err) = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&ini_path)
+        {
+            warn!(
+                "failed to create config file {}: {}",
+                ini_path.display(),
+                err
+            );
         }
     }
     ini_path

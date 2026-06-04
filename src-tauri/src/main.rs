@@ -776,25 +776,10 @@ fn detect_game_version_from_folder(game_root: &Path) -> Option<mhf_iel::MhfVersi
         ("MONSTER HUNTER FRONTIER ZZ", mhf_iel::MhfVersion::ZZ),
     ];
 
-    fn read_dll_bytes(path: &Path) -> Option<Vec<u8>> {
-        if !path.exists() {
-            return None;
-        }
-        std::fs::read(path).ok()
-    }
+    let mhfo_bytes = std::fs::read(game_root.join("mhfo.dll")).ok()?;
+    let hd_bytes = std::fs::read(game_root.join("mhfo-hd.dll")).ok();
 
-    let binary_candidates = [
-        game_root.join("mhfo.dll"),
-        game_root.join("mhfo-hd.dll"),
-        game_root.join("mhf.exe"),
-    ];
-
-    for dll in binary_candidates {
-        let bytes = match read_dll_bytes(&dll) {
-            Some(value) => value,
-            None => continue,
-        };
-
+    for bytes in hd_bytes.iter().chain(std::iter::once(&mhfo_bytes)) {
         for &(signature, version) in VERSION_SIGNATURES {
             let ascii = signature.as_bytes();
             if bytes.windows(ascii.len()).any(|window| window == ascii) {
@@ -829,12 +814,7 @@ fn detect_game_version_from_folder(game_root: &Path) -> Option<mhf_iel::MhfVersi
 }
 
 fn resolve_effective_game_version(state_sync: &TauriStateSync) -> mhf_iel::MhfVersion {
-    if state_sync.ui_prefs.force_game_version {
-        return state_sync.ui_prefs.game_version;
-    }
-
-    detect_game_version_from_folder(&state_sync.effective_folder())
-        .unwrap_or(state_sync.ui_prefs.game_version)
+    state_sync.ui_prefs.game_version
 }
 
 #[derive(Clone, Copy)]
@@ -1116,6 +1096,33 @@ Server-driven banners, messages, and unit cards still come from the server.\n"
     )
 }
 
+fn ensure_dir(path: &Path) -> Result<(), String> {
+    fs::create_dir_all(path).map_err(|err| format!("failed to create {}: {}", path.display(), err))
+}
+
+fn ensure_config_store_parent(game_root: &Path) -> Result<(), String> {
+    if let Some(parent) = config_store_path(game_root).parent() {
+        ensure_dir(parent)?;
+    }
+    Ok(())
+}
+
+fn ensure_webview_data_dir(game_root: &Path) -> Result<(), String> {
+    ensure_dir(&webview_data_path(game_root))
+}
+
+fn write_bundled_file_if_needed(target: &Path, bytes: &[u8]) -> Result<(), String> {
+    let needs_write = match fs::metadata(target) {
+        Ok(metadata) => metadata.len() != bytes.len() as u64,
+        Err(_) => true,
+    };
+    if !needs_write {
+        return Ok(());
+    }
+    fs::write(target, bytes)
+        .map_err(|err| format!("failed to copy bundled file {}: {}", target.display(), err))
+}
+
 fn ensure_mezeporta_support_dirs(game_root: &Path) -> Result<(), String> {
     let mezeporta_root = game_root.join("Mezeporta");
     let webview_data_dir = mezeporta_root.join("WebView");
@@ -1125,31 +1132,24 @@ fn ensure_mezeporta_support_dirs(game_root: &Path) -> Result<(), String> {
     let classic_offline_dir = offline_images_root.join("Classic");
     let ps4_offline_dir = offline_images_root.join("PS4");
 
-    for dir in [
-        &webview_data_dir,
-        &fonts_dir,
-        &custom_fonts_dir,
-        &classic_offline_dir,
-        &ps4_offline_dir,
-    ] {
-        fs::create_dir_all(dir)
-            .map_err(|err| format!("failed to create {}: {}", dir.display(), err))?;
-    }
+    ensure_dir(&fonts_dir)?;
+    ensure_dir(&custom_fonts_dir)?;
+    ensure_dir(&classic_offline_dir)?;
+    ensure_dir(&ps4_offline_dir)?;
+    ensure_dir(&webview_data_dir)?;
 
     #[cfg(not(windows))]
     {
         let bin_dir = mezeporta_root.join("bin");
         let wine_prefix_dir = game_root.join(WINE_PREFIX_DIR);
         for dir in [&bin_dir, &wine_prefix_dir] {
-            fs::create_dir_all(dir)
-                .map_err(|err| format!("failed to create {}: {}", dir.display(), err))?;
+            ensure_dir(dir)?;
         }
     }
 
     for (file_name, bytes) in BUNDLED_LAUNCHER_FONTS {
         let target = fonts_dir.join(file_name);
-        fs::write(&target, bytes)
-            .map_err(|err| format!("failed to copy bundled font {}: {}", target.display(), err))?;
+        write_bundled_file_if_needed(&target, bytes)?;
     }
 
     for (folder, readme) in [
@@ -4452,6 +4452,7 @@ async fn create_character(
             s.set("last_char_id", character.id);
         });
         cancel_all_requests(&mut state_sync);
+        drop(state_sync);
         window.close().map_err(|e| {
             error!("failed to close window: {}", e);
             "internal-error"
@@ -4532,6 +4533,7 @@ async fn select_character(
             clear_alt_character_cache_for_character(&state_sync.effective_folder(), &identity);
         }
         cancel_all_requests(&mut state_sync);
+        drop(state_sync);
         window.close().map_err(|e| {
             error!("failed to close window: {}", e);
             "internal-error"
@@ -4744,13 +4746,16 @@ async fn shutdown_launcher(
     window: Window,
     state: tauri::State<'_, TauriState>,
 ) -> Result<(), String> {
+    let app_handle = window.app_handle();
     let mut state_sync = state.state_sync.lock().await;
     state_sync.exit_reason = None;
     cancel_all_requests(&mut state_sync);
+    drop(state_sync);
     window.close().map_err(|e| {
         error!("failed to close window: {}", e);
         "internal-error"
     })?;
+    app_handle.exit(0);
     Ok(())
 }
 
@@ -4897,7 +4902,7 @@ fn main() {
                         let guard = state.state_sync.blocking_lock();
                         guard.effective_folder()
                     };
-                    ensure_mezeporta_support_dirs(&initial_game_root).map_err(runtime_error)?;
+                    ensure_config_store_parent(&initial_game_root).map_err(runtime_error)?;
                     let initial_store_path = config_store_path(&initial_game_root);
                     let mut bootstrap_store =
                         create_store_builder(&app_handle, initial_store_path.clone());
@@ -4911,7 +4916,8 @@ fn main() {
                         let guard = state.state_sync.blocking_lock();
                         guard.effective_folder()
                     };
-                    ensure_mezeporta_support_dirs(&final_game_root).map_err(runtime_error)?;
+                    ensure_config_store_parent(&final_game_root).map_err(runtime_error)?;
+                    ensure_webview_data_dir(&final_game_root).map_err(runtime_error)?;
                     let final_store_path = config_store_path(&final_game_root);
 
                     let mut store = if final_store_path == initial_store_path {
@@ -4986,6 +4992,13 @@ fn main() {
                         delayed_show_window
                             .show()
                             .unwrap_or_else(|e| warn!("failed to show main window: {}", e));
+                    });
+                    let support_game_root = final_game_root.clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(1800));
+                        if let Err(error) = ensure_mezeporta_support_dirs(&support_game_root) {
+                            warn!("failed to prepare Mezeporta support folders: {}", error);
+                        }
                     });
                     if !serverlist_url.is_empty() {
                         let endpoints_req = server::simple_request(
