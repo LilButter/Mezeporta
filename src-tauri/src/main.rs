@@ -1,8 +1,6 @@
-#![cfg_attr(
-    all(not(debug_assertions), target_os = "windows"),
-    windows_subsystem = "windows"
-)]
+
 mod altclient_stats;
+mod cli;
 mod config;
 mod endpoint;
 mod manifest;
@@ -641,7 +639,7 @@ fn version_to_savedata_token(version: mhf_iel::MhfVersion) -> &'static str {
     }
 }
 
-fn label_to_version(label: &str) -> Option<mhf_iel::MhfVersion> {
+pub(crate) fn label_to_version(label: &str) -> Option<mhf_iel::MhfVersion> {
     serde_json::from_value::<mhf_iel::MhfVersion>(Value::String(label.trim().to_string())).ok()
 }
 
@@ -1123,7 +1121,7 @@ fn write_bundled_file_if_needed(target: &Path, bytes: &[u8]) -> Result<(), Strin
         .map_err(|err| format!("failed to copy bundled file {}: {}", target.display(), err))
 }
 
-fn ensure_mezeporta_support_dirs(game_root: &Path) -> Result<(), String> {
+pub(crate) fn ensure_mezeporta_support_dirs(game_root: &Path) -> Result<(), String> {
     let mezeporta_root = game_root.join("Mezeporta");
     let webview_data_dir = mezeporta_root.join("WebView");
     let fonts_dir = mezeporta_root.join("fonts");
@@ -1345,6 +1343,53 @@ fn resolve_meze_deps_source(app_handle: &AppHandle) -> Result<PathBuf, String> {
     Err(
         "meze-deps.exe was not found. Use the AppImage/.deb build or place it at Mezeporta/bin/meze-deps.exe in the portable layout."
             .to_string(),
+    )
+}
+
+#[cfg(not(windows))]
+pub(crate) fn resolve_meze_deps_path(game_root: &Path) -> Result<PathBuf, String> {
+    let mut candidates = Vec::new();
+
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(exe_dir) = current_exe.parent() {
+            candidates.push(exe_dir.join("bin").join("meze-deps.exe"));
+            candidates.push(exe_dir.join("Mezeporta").join("bin").join("meze-deps.exe"));
+            if let Some(prefix_dir) = exe_dir.parent() {
+                candidates.push(
+                    prefix_dir
+                        .join("lib")
+                        .join("mezeporta")
+                        .join("bin")
+                        .join("meze-deps.exe"),
+                );
+                candidates.push(
+                    prefix_dir
+                        .join("lib")
+                        .join("Mezeporta")
+                        .join("bin")
+                        .join("meze-deps.exe"),
+                );
+            }
+        }
+    }
+
+    if let Ok(current_dir) = std::env::current_dir() {
+        candidates.push(current_dir.join("bin").join("meze-deps.exe"));
+        candidates.push(current_dir.join("Mezeporta").join("bin").join("meze-deps.exe"));
+    }
+
+    // Also check game root
+    candidates.push(game_root.join("bin").join("meze-deps.exe"));
+    candidates.push(game_root.join("Mezeporta").join("bin").join("meze-deps.exe"));
+
+    for candidate in candidates {
+        if candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+
+    Err(
+        "meze-deps.exe was not found. Use the AppImage/.deb build or place it at Mezeporta/bin/meze-deps.exe in the portable layout.".to_string(),
     )
 }
 
@@ -2619,12 +2664,12 @@ impl TauriStateSync {
     }
 }
 
-fn run_mhf(
+pub(crate) fn run_mhf(
     config: MhfConfig,
     game_root: PathBuf,
     launcher_prefs: LauncherPrefs,
     wait_for_exit: bool,
-    app_handle: AppHandle,
+    app_handle: Option<AppHandle>,
 ) -> Result<isize, String> {
     #[cfg(windows)]
     {
@@ -2636,7 +2681,10 @@ fn run_mhf(
     {
         ensure_linux_path_defaults();
         ensure_mezeporta_support_dirs(&game_root)?;
-        let helper_path = stage_meze_deps(&app_handle, &game_root)?;
+        let helper_path = match &app_handle {
+            Some(handle) => stage_meze_deps(handle, &game_root)?,
+            None => resolve_meze_deps_path(&game_root)?,
+        };
         let runtime = resolve_wine_runtime(&game_root, &launcher_prefs)?;
         sync_wine_controller_overrides(&runtime, launcher_prefs.preload_controller_dlls)?;
         let payload = serde_json::to_vec(&config)
@@ -4428,7 +4476,7 @@ async fn create_character(
             build_launch_bundle(&state_sync, character.id, true)?
         };
 
-        run_mhf(config, game_root, launcher_prefs, false, app_handle)?;
+        run_mhf(config, game_root, launcher_prefs, false, Some(app_handle))?;
 
         let mut state_sync = state.state_sync.lock().await;
         state_sync.skip_child_cleanup_once = true;
@@ -4498,7 +4546,7 @@ async fn select_character(
             build_launch_bundle(&state_sync, character_id, false)?
         };
 
-        run_mhf(config, game_root, launcher_prefs, false, app_handle)?;
+        run_mhf(config, game_root, launcher_prefs, false, Some(app_handle))?;
 
         let mut state_sync = state.state_sync.lock().await;
         state_sync.skip_child_cleanup_once = true;
@@ -4839,6 +4887,11 @@ impl From<&server::FriendData> for mhf_iel::FriendData {
 }
 
 fn main() {
+    // Check for CLI mode before single-instance check
+    if cli::try_cli_launch() {
+        std::process::exit(0);
+    }
+
     let _single_instance_guard = acquire_single_instance_mutex();
     // Log plugin has an issue where it cannot be initialized twice.
     let mut log_plugin_initial = None;
@@ -5218,7 +5271,7 @@ fn main() {
                 game_root,
                 launcher_prefs_for_launch,
                 true,
-                app_handle,
+                Some(app_handle),
             ) {
                 Ok(code) => {
                     info!("exited with code {}", code);
