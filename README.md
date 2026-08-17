@@ -56,6 +56,7 @@ The [Wrapper](https://github.com/LilButter/Mezeporta-Wrapper) is a separate help
 ##
 ### CLI Commands
 
+```text
 Mezeporta --help
 Options:
   -v, --version <VERSION>   Game version (e.g., ZZ, G10.1, S7K, G1, F5, S6)
@@ -71,6 +72,7 @@ Options:
 Examples:
   Mezeporta -v ZZ -u player -pw secret -s 192.168.1.100 -c 0
   Mezeporta -v G1 -u player -pw secret -s mezeporta.example.com -p1 8080 -p2 53310 -c 1 -HD
+```
 
 ##
 ### Version Support
