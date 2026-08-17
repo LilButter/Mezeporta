@@ -56,22 +56,23 @@ The [Wrapper](https://github.com/LilButter/Mezeporta-Wrapper) is a separate help
 ##
 ### CLI Commands
 
-```text
-Mezeporta --help
-Options:
-  -v, --version <VERSION>   Game version (e.g., ZZ, G10.1, S7K, G1, F5, S6)
-  -u, --username <USER>     Login username
-  -pw, --password <PASS>    Login password
-  -s, --server <SERVER>     Server hostname or IP
-  -p1, --launcher-port <PORT>  Launcher port (default: 8080)
-  -p2, --game-port <PORT>      Game/entrance port (default: 53310)
-  -c, --character <SLOT>    Character slot index (0-based)
-  -HD                       Enable HD mode (default is SD)
-  --help                    Show this help message
+| Command | Description | Default / Example |
+| --- | --- | --- |
+| `-v, --version <VERSION>` | Game version | `ZZ`, `G10.1`, `S7K`, `G1`, `F5`, `S6` |
+| `-u, --username <USER>` | Login username | `player` |
+| `-pw, --password <PASS>` | Login password | `secret` |
+| `-s, --server <SERVER>` | Server hostname or IP | `192.168.1.100` |
+| `-p1, --launcher-port <PORT>` | Launcher port | Default: `8080` |
+| `-p2, --game-port <PORT>` | Game/entrance port | Default: `53310` |
+| `-c, --character <SLOT>` | Character slot index (0-based) | `0` |
+| `-HD` | Enable HD mode | Default: SD |
+| `--help` | Show this help message | — |
 
-Examples:
-  Mezeporta -v ZZ -u player -pw secret -s 192.168.1.100 -c 0
-  Mezeporta -v G1 -u player -pw secret -s mezeporta.example.com -p1 8080 -p2 53310 -c 1 -HD
+### Examples
+
+```text
+Mezeporta -v ZZ -u player -pw secret -s 192.168.1.100 -c 0
+Mezeporta -v G1 -u player -pw secret -s mezeporta.example.com -p1 8080 -p2 53310 -c 1 -HD
 ```
 
 ##
