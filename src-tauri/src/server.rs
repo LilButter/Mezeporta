@@ -120,7 +120,7 @@ pub struct LauncherHeaders {
     pub zz: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct LauncherResponse {
     pub banners: Vec<BannerData>,

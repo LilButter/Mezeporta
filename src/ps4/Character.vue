@@ -53,7 +53,13 @@ const isPlaceholder = computed(() => {
   return !c || c.id === null || c.placeholder;
 });
 
-const unitSrc = ref(assetUrl('/units/unitbg.png'));
+function bundledUnitSrc(character) {
+  return typeof character?.weapon === 'number'
+    ? assetUrl(`/units/${character.weapon}.png`)
+    : assetUrl('/units/unitbg.png');
+}
+
+const unitSrc = ref(bundledUnitSrc(props.character));
 let activePortraitRequest = 0;
 
 function notifyPortraitReady() {
@@ -68,6 +74,7 @@ function characterKey(character) {
 function resolvedLauncherOrigin() {
   if (!store.currentEndpoint || !store.currentEndpoint.url) return '';
   if (store.currentEndpoint.url === 'OFFLINEMODE') return '';
+  if (store.settings.serverMode === 'signv1') return '';
 
   const rawUrl = store.currentEndpoint.url.includes('://')
     ? store.currentEndpoint.url
@@ -85,6 +92,7 @@ function resolvedLauncherOrigin() {
 }
 
 function portraitUrls() {
+  if (store.settings.serverMode === "signv1") return [];
   const cacheBust = props.character?.lastLogin || Date.now();
   const characterId = Number(props.character?.id);
   const base = resolvedLauncherOrigin();
@@ -116,10 +124,7 @@ function loadPortrait() {
     return;
   }
 
-  unitSrc.value =
-    typeof c.weapon === 'number'
-      ? assetUrl(`/units/${c.weapon}.png`)
-      : assetUrl('/units/unitbg.png');
+  unitSrc.value = bundledUnitSrc(c);
 
   const urls = portraitUrls();
   if (!urls.length) {
@@ -153,7 +158,12 @@ function loadPortrait() {
 
 onMounted(loadPortrait);
 watch(
-  () => [props.character?.id, props.character?.name, props.character?.lastLogin],
+  () => [
+    props.character?.id,
+    props.character?.name,
+    props.character?.lastLogin,
+    props.character?.weapon,
+  ],
   loadPortrait
 );
 watch(

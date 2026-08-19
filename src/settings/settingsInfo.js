@@ -208,6 +208,12 @@ export const SETTINGS_INFO = Object.freeze({
     bodyKey: "settings-info-launcher-controller-body",
     bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
+  "launcher-server-mode": {
+    titleKey: "launcher-server-mode-label",
+    titleFallback: "Server Mode",
+    bodyKey: "settings-info-launcher-server-mode-body",
+    bodyFallback: "Use SignV1 (sign server) auth instead of the API server. Skips patching and launcher assets.",
+  },
   "launcher-hardware-acceleration": {
     titleKey: "launcher-hardware-acceleration-label",
     titleFallback: "Hardware Acceleration",

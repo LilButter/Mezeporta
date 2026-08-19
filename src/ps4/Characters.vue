@@ -285,6 +285,7 @@ function triggerSizzle() {
 function resolvedLauncherOrigin() {
   if (!store.currentEndpoint || !store.currentEndpoint.url) return "";
   if (store.currentEndpoint.url === "OFFLINEMODE") return "";
+  if (store.settings.serverMode === "signv1") return "";
 
   const rawUrl = store.currentEndpoint.url.includes("://")
     ? store.currentEndpoint.url
@@ -302,6 +303,7 @@ function resolvedLauncherOrigin() {
 }
 
 function portraitUrlsForCharacter(character) {
+  if (store.settings.serverMode === "signv1") return [];
   const cacheBust = character?.lastLogin || Date.now();
   const characterId = Number(character?.id);
   const base = resolvedLauncherOrigin();
@@ -383,7 +385,14 @@ async function preloadCharacterPageImages(blockProgress = false) {
   }
 
   const urls = [...new Set(characterPagePreloadUrls())];
-  await Promise.allSettled(urls.map(preloadCharacterImage));
+  const results = await Promise.all(
+    urls.map(async (url) => ({ url, ok: await preloadCharacterImage(url) }))
+  );
+
+  const failed = results.filter((r) => !r.ok);
+  if (failed.length > 0) {
+    console.warn("[character-preload] failed to load:", failed.map((r) => r.url));
+  }
 
   if (request !== characterPagePreloadRequest) return;
   characterPageAssetsReady.value = true;
@@ -487,7 +496,7 @@ function startLoginProgress() {
   startLoadingFeedback();
   void preloadCharacterPageImages(true);
 
-  if (!hasRealCharacter.value) {
+  if (!hasRealCharacter.value || store.settings.serverMode === "signv1") {
     altSavedataReady.value = true;
   } else {
     altSavedataReady.value = false;
@@ -616,7 +625,7 @@ function transitionToCompleteAfterLoop() {
 }
 
 async function prefetchSelectedCharacterSavedata(blockProgress = false) {
-  if (!hasRealCharacter.value) {
+  if (!hasRealCharacter.value || store.settings.serverMode === "signv1") {
     if (blockProgress) {
       altSavedataReady.value = true;
       maybeFinishLoginProgress();
@@ -681,10 +690,20 @@ function onCurrentPortraitReady(cycle) {
 }
 
 function revealAdjacentDelayed() {
-  if (adjacentTimer) clearTimeout(adjacentTimer);
+  if (adjacentTimer) {
+    clearTimeout(adjacentTimer);
+    adjacentTimer = null;
+  }
+
+  if (store.settings.serverMode === "signv1") {
+    adjacentVisible.value = true;
+    return;
+  }
+
   adjacentVisible.value = false;
   adjacentTimer = setTimeout(() => {
     adjacentVisible.value = true;
+    adjacentTimer = null;
   }, 550);
 }
 
@@ -762,7 +781,7 @@ watch(characterIndex, (newIndex, oldIndex) => {
     addAnimationClass(aclass);
     characterTimeout = setTimeout(clearAnimationClass, 300);
   }, 0);
-  if (!showLoginProgress.value) {
+  if (!showLoginProgress.value && store.settings.serverMode !== "signv1") {
     void prefetchSelectedCharacterSavedata(false);
   }
 });

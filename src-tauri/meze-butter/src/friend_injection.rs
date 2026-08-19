@@ -1,4 +1,4 @@
-﻿use std::thread;
+use std::thread;
 use std::time::Duration;
 
 use crate::utils::bufcopy;
@@ -323,7 +323,7 @@ fn friend_layout_signatures_for_version(version: MhfVersion) -> &'static [Friend
 }
 
 #[inline]
-fn make_ext_id(mut id: u32) -> String {
+pub fn make_ext_id(mut id: u32) -> String {
     debug_assert!(id < BASE32_CAP, "ext_id overflow: {}", id);
     let mut out = [b'1'; 6];
     for byte in &mut out {
@@ -474,6 +474,58 @@ fn wait_and_inject(layout: FriendLayout, friends: &[FriendData]) -> bool {
     table_ready
 }
 
+/// Returns the friend injection signatures valid for a specific version.
+pub fn available_friend_signatures(version: MhfVersion, hd: bool) -> Vec<String> {
+    const EMPTY: &[&str] = &[];
+    const S6: &[&str] = &["v1.13.3246"];
+    const S7K: &[&str] = &["v7.0.14_2"];
+    const F4: &[&str] = &["v1.20_107869"];
+    const F5: &[&str] = &["v1.20_125635", "v1.20_133710"];
+    const G1: &[&str] = &["v1.22_153077", "v1.22_156129"];
+    const G2: &[&str] = &["v1.23_187828"];
+    const G3: &[&str] = &["v1.27_211402", "v1.27_212295"];
+    const G3_1: &[&str] = &["v1.27_213258", "v1.27_215335", "v1.27_217155"];
+    const G3_2: &[&str] = &["v1.27_222273", "v1.27_223087"];
+    const GG: &[&str] = &["v1.28_246880"];
+    const G5_1: &[&str] = &["v1.30.283838"];
+    const G5_2: &[&str] = &["v1.32_302094"];
+    const G6_SD: &[&str] = &["v1.33_325336"];
+    const G6_HD: &[&str] = &["v1.33_326088"];
+    const G7_SD: &[&str] = &["v1.36.05_936940dd"];
+    const G7_HD: &[&str] = &["v1.36.05_a924ce4d"];
+    const G9_1_SD: &[&str] = &["v1.38.19_e8966870"];
+    const G9_1_HD: &[&str] = &["v1.38.19_47c90390"];
+    const G10_1_SD: &[&str] = &["v1.41.30_c730c673", "v1.41.32_8acc3715"];
+    const G10_1_HD: &[&str] = &["v1.41.30_f5ed3a6a", "v1.41.32_5c06b547"];
+    const Z1_SD: &[&str] = &["v1.44.45_15a73eb7"];
+    const Z1_HD: &[&str] = &["v1.44.45_dca95f5f"];
+    const ZZ_SD: &[&str] = &["v1.52.79_04d16dc4"];
+    const ZZ_HD: &[&str] = &["v1.52.79_73c49f52"];
+
+    let sigs: &[&str] = match version {
+        MhfVersion::S6 => S6,
+        MhfVersion::S7K => S7K,
+        MhfVersion::F4 => F4,
+        MhfVersion::F5 => F5,
+        MhfVersion::G1 => G1,
+        MhfVersion::G2 => G2,
+        MhfVersion::G3 => G3,
+        MhfVersion::G3_1 => G3_1,
+        MhfVersion::G3_2 => G3_2,
+        MhfVersion::GG => GG,
+        MhfVersion::G5_1 => G5_1,
+        MhfVersion::G5_2 => G5_2,
+        MhfVersion::G6 => if hd { G6_HD } else { G6_SD },
+        MhfVersion::G7 => if hd { G7_HD } else { G7_SD },
+        MhfVersion::G9_1 => if hd { G9_1_HD } else { G9_1_SD },
+        MhfVersion::G10_1 => if hd { G10_1_HD } else { G10_1_SD },
+        MhfVersion::Z1 => if hd { Z1_HD } else { Z1_SD },
+        MhfVersion::ZZ => if hd { ZZ_HD } else { ZZ_SD },
+        MhfVersion::G5 | MhfVersion::Z2 | MhfVersion::Z2T => EMPTY,
+    };
+    sigs.iter().map(|s| (*s).to_string()).collect()
+}
+
 pub(crate) fn maybe_inject_friends(
     version: MhfVersion,
     friend_layout_dll_name: &'static str,
@@ -481,9 +533,11 @@ pub(crate) fn maybe_inject_friends(
     friends: &[FriendData],
 ) -> bool {
     let Some(signature) = selected_friend_signature else {
+    
         return false;
     };
     let friend_layout_signatures = friend_layout_signatures_for_version(version);
+
     if let Some(layout) = find_layout_for_signature(
         signature,
         Some(friend_layout_dll_name),
@@ -491,8 +545,10 @@ pub(crate) fn maybe_inject_friends(
     )
     .or_else(|| find_layout_for_signature(signature, None, friend_layout_signatures))
     {
+
         return wait_and_inject(layout, friends);
     }
+
 
     false
 }

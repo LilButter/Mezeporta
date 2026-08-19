@@ -81,6 +81,34 @@ pub enum MhfVersion {
     Z2 = 21,
 }
 
+impl MhfVersion {
+    pub fn all_versions() -> Vec<MhfVersion> {
+        vec![
+            MhfVersion::ZZ,
+            MhfVersion::Z1,
+            MhfVersion::G10_1,
+            MhfVersion::G9_1,
+            MhfVersion::G7,
+            MhfVersion::G6,
+            MhfVersion::G5_2,
+            MhfVersion::GG,
+            MhfVersion::G3_2,
+            MhfVersion::G3_1,
+            MhfVersion::G2,
+            MhfVersion::G1,
+            MhfVersion::F5,
+            MhfVersion::F4,
+            MhfVersion::S7K,
+            MhfVersion::S6,
+            MhfVersion::Z2T,
+            MhfVersion::G5_1,
+            MhfVersion::G3,
+            MhfVersion::G5,
+            MhfVersion::Z2,
+        ]
+    }
+}
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, TryFromPrimitive)]
 pub enum CliFlags {
@@ -164,6 +192,14 @@ pub struct MhfConfig {
     pub mhf_folder: Option<PathBuf>,
     pub font_path: Option<PathBuf>,
     pub mhf_flags: Option<Vec<CliFlags>>,
+}
+
+pub fn available_friend_signatures(version: MhfVersion, hd: bool) -> Vec<String> {
+    friend_injection::available_friend_signatures(version, hd)
+}
+
+pub fn make_ext_id(id: u32) -> String {
+    friend_injection::make_ext_id(id)
 }
 
 pub fn run(config: MhfConfig) -> Result<isize> {

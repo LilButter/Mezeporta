@@ -65,6 +65,7 @@ import {
     patcherLog,
   effectiveBanners,
   currentSavedataVersionToken,
+  setLauncherPrefs,
 } from "../store";
 
 import {
@@ -407,7 +408,7 @@ const activeAltOnlineFriendCount = computed(() =>
 );
 
 const showFriendsButton = computed(
-  () => canUseSavedataPanels.value && activeAltFriendEntries.value.length > 0
+  () => store.settings.serverMode !== "signv1" && canUseSavedataPanels.value && activeAltFriendEntries.value.length > 0
 );
 
 const activeAltUnreadMail = computed(() =>
@@ -420,7 +421,7 @@ const activeAltUnreadMailEntries = computed(() => {
 });
 
 const showClassicMailButton = computed(
-  () => canUseSavedataPanels.value && activeAltUnreadMail.value > 0
+  () => store.settings.serverMode !== "signv1" && canUseSavedataPanels.value && activeAltUnreadMail.value > 0
 );
 
 const activeAltDistributionEntries = computed(() => {
@@ -443,7 +444,7 @@ const activeAltUnclaimedDistributions = computed(() =>
 );
 
 const showDistributionButton = computed(
-  () => canUseSavedataPanels.value && activeAltUnclaimedDistributions.value > 0
+  () => store.settings.serverMode !== "signv1" && canUseSavedataPanels.value && activeAltUnclaimedDistributions.value > 0
 );
 
 const hasMoreActiveAltDistributionEntries = computed(
@@ -545,6 +546,7 @@ function formatPanelNumber(value) {
 }
 
 const footerStatusLabel = computed(() => {
+  if (store.settings.serverMode === 'signv1') return store.launcherTag;
   if (storeMut.page === CHARACTERS_PAGE) {
     return `Online Players: ${formatPanelNumber(serverInfo.value?.onlinePlayers ?? 0)}`;
   }
@@ -595,6 +597,11 @@ function mergeDistributionEntries(characterId, entries) {
 }
 
 async function refreshServerInfo() {
+  if (store.settings.serverMode === "signv1") {
+    serverInfo.value = { ...EMPTY_ALT_CLIENT_STATS };
+    serverInfoLoading.value = false;
+    return;
+  }
   serverInfoLoading.value = true;
   try {
     const next = await getAltClientStats();
@@ -672,6 +679,7 @@ function resetSavedataPanelState() {
 }
 
 async function ensureSavedataForBook() {
+  if (store.settings.serverMode === "signv1") return false;
   if (!canUseSavedataPanels.value) return false;
 
   const characterId = activeCharacterId.value;
@@ -713,6 +721,7 @@ async function ensureSavedataForBook() {
 
 async function toggleServerInfoPanel() {
   playSelect();
+  if (store.settings.serverMode === "signv1") return;
   if (!canShowSavedataPanels.value) {
     closeAltPanels();
     return;
@@ -733,6 +742,7 @@ async function toggleServerInfoPanel() {
 
 async function toggleMailPanel() {
   playSelect();
+  if (store.settings.serverMode === "signv1") return;
   if (!canUseSavedataPanels.value) {
     closeAltPanels();
     return;
@@ -753,6 +763,7 @@ async function toggleMailPanel() {
 
 async function toggleDistributionPanel() {
   playSelect();
+  if (store.settings.serverMode === "signv1") return;
   if (!canUseSavedataPanels.value) {
     closeAltPanels();
     return;
@@ -773,6 +784,7 @@ async function toggleDistributionPanel() {
 
 async function toggleFriendsPanel() {
   playSelect();
+  if (store.settings.serverMode === "signv1") return;
   if (!canUseSavedataPanels.value) {
     closeAltPanels();
     return;
@@ -817,6 +829,7 @@ async function loadMoreDistributionEntries() {
 
 async function toggleBookPanel() {
   playSelect();
+  if (store.settings.serverMode === "signv1") return;
   if (!canUseSavedataPanels.value) return;
 
   if (!showBookPanel.value) {
@@ -841,6 +854,10 @@ async function toggleBookPanel() {
 async function refreshSavedataVersionAvailability() {
   const checkNonce = ++savedataVersionCheckNonce;
 
+  if (store.settings.serverMode === "signv1") {
+    activeCharacterHasSavedataVersion.value = false;
+    return false;
+  }
   if (!canShowSavedataPanels.value || !hasRealCharacter.value) {
     activeCharacterHasSavedataVersion.value = false;
     return false;
@@ -1748,6 +1765,13 @@ const messages = computed(() => {
 
 const srvFocused = { name: false, url: false, lport: false, gport: false };
 
+function dialogToggleServerMode() {
+  const isSignV1 = storeMut.editEndpoint.serverMode === "signv1";
+  const next = isSignV1 ? "api" : "signv1";
+  storeMut.editEndpoint.serverMode = next;
+  setLauncherPrefs({ serverMode: next });
+}
+
 function syncServerDialogNameDownNode(key) {
   if (!store.editEndpointNew) return;
   if (key === "url") serverDialogNameDownNode.value = "server-dialog-host";
@@ -1850,7 +1874,7 @@ watch(
           <img draggable="false" :key="launcherHeaderUrl" :src="launcherHeaderUrl" @error="e => (e.target.src = fallbackLauncherHeader)"/>
           <div class="absolute">
             <div class="relative bottom-[45px] left-[350px] text-[#dcdcdc]">
-              release ver. 1.5.2
+              release ver. 1.5.4
             </div>
           </div>
           <div
@@ -2574,6 +2598,15 @@ watch(
               @controller-nav-focus="onSrvControllerNavFocus('gport')"
               @keydown="srvTypeSfx"
             />
+            <div class="col-span-7 flex items-center justify-center gap-3 mt-1">
+              <span class="text-[14px] leading-tight news-default">{{ $t('api-label', 'API') }}</span>
+              <label class="relative inline-flex items-center cursor-pointer" @click.stop.prevent="playSelect(); dialogToggleServerMode()">
+                <input type="checkbox" class="sr-only peer" :checked="storeMut.editEndpoint.serverMode === 'signv1'" :disabled="storeMut.editEndpoint.isRemote" />
+                <div class="w-12 h-7 rounded-full bg-black/50 border transition-colors" :style="{ borderColor: 'var(--controller-active-color)' }"></div>
+                <div class="absolute left-[3px] top-[3px] w-5 h-5 rounded-full bg-[#f5f5f5] shadow transition-transform transition-colors peer-checked:translate-x-5" :style="storeMut.editEndpoint.serverMode === 'signv1' ? { backgroundColor: 'var(--controller-active-color)' } : null"></div>
+              </label>
+              <span class="text-[14px] leading-tight news-default">{{ $t('signv1-label', 'SignV1') }}</span>
+            </div>
           </div>
         </template>
         <div class="grow"></div>

@@ -1,4 +1,4 @@
-﻿# Core
+# Core
 cancel-button = キャンセル
 save-button = 保存
 add-button = 追加
@@ -201,7 +201,14 @@ server-switch-existing-confirmation =
 
 launcher-sfx-label = 効果音
 launcher-controller-label = コントローラー
+launcher-server-mode-label = サーバーモード
+launcher-server-mode-body = APIサーバーの代わりにSignV1（サインサーバー）認証を使用します。パッチングとランチャーアセットをスキップします。
+server-mode-label = サーバーモード
+server-mode-api-label = API
+server-mode-signv1-label = SignV1
 launcher-hardware-acceleration-label = ハードウェアアクセラレーション
+api-label = API
+signv1-label = SignV1
 sfx-volume-label = 効果音音量
 game-version-label = バージョン
 friend-signature-label = 署名
@@ -257,6 +264,7 @@ settings-info-launcher-resolution-body = ランチャー専用のウィンドウ
 settings-info-launcher-custom-resolution-body = 現在のスタイル用に、ランチャーの幅と高さを手動で入力します。
 settings-info-launcher-resolution-reset-body = 現在のスタイルで保存されているランチャーサイズを既定の解像度に戻します。
 settings-info-launcher-controller-body = ランチャーUIのコントローラー操作です。現在作業中です。
+settings-info-launcher-server-mode-body = APIサーバーの代わりにSignV1（サインサーバー）認証を使用します。パッチングとランチャーアセットをスキップします。
 settings-info-launcher-hardware-acceleration-body = Linux GPU描画です。表示問題がある場合のみ無効にしてください。再起動が必要です。
 settings-info-launcher-sfx-body = UIのホバー、選択、ログイン時の効果音です。
 settings-info-launcher-sfx-volume-body = ランチャーUI効果音の音量です。既定値: 30%。

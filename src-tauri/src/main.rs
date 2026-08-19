@@ -1,4 +1,11 @@
 
+#[cfg(windows)]
+fn detach_console_for_gui() {
+    // detach CLI at GUI boot.
+    use windows::Win32::System::Console::FreeConsole;
+    let _ = unsafe { FreeConsole() };
+}
+
 mod altclient_stats;
 mod cli;
 mod config;
@@ -7,6 +14,7 @@ mod manifest;
 mod patcher;
 mod server;
 mod settings;
+mod sign_server;
 mod store;
 mod user;
 
@@ -20,8 +28,8 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use server::{
-    AuthResponse, JsonRequest, LauncherHeaders, LauncherPs4Assets, LauncherResponse, MessageData,
-    PatcherResponse,
+    AuthResponse, CharacterData, FriendData, JsonRequest, LauncherHeaders, LauncherPs4Assets,
+    LauncherResponse, MessageData, MezFesData, PatcherResponse,
 };
 use settings::Settings;
 #[cfg(windows)]
@@ -95,6 +103,8 @@ const WINE_PREFIX_MODE_PORTABLE: &str = "portable";
 const WINE_PREFIX_MODE_SYSTEM: &str = "system";
 const WINE_PREFIX_MODE_CUSTOM: &str = "custom";
 const WINE_PREFIX_MODE_PROTON: &str = "proton";
+const SERVER_MODE_API: &str = "api";
+const SERVER_MODE_SIGNV1: &str = "signv1";
 #[cfg(not(windows))]
 const WINE_DLL_OVERRIDES_KEY: &str = r"HKCU\Software\Wine\DllOverrides";
 #[cfg(not(windows))]
@@ -465,6 +475,21 @@ fn migrate_config_store(store: &mut tauri_plugin_store::Store<tauri::Wry>) -> bo
             }
         }
 
+        if !obj.contains_key("serverMode") {
+            let normalized = obj
+                .remove("server_mode")
+                .and_then(|value| value.as_str().map(normalize_server_mode))
+                .unwrap_or_else(default_server_mode);
+            obj.insert("serverMode".to_string(), Value::String(normalized));
+            touched = true;
+        } else if let Some(current) = obj.get("serverMode").and_then(Value::as_str) {
+            let normalized = normalize_server_mode(current);
+            if normalized != current {
+                obj.insert("serverMode".to_string(), Value::String(normalized));
+                touched = true;
+            }
+        }
+
         if !obj.contains_key("winePrefixCustomPath") {
             let normalized = obj
                 .remove("wine_prefix_custom_path")
@@ -606,7 +631,7 @@ fn normalize_remote_url(value: &str) -> Option<String> {
     }
 }
 
-fn version_to_label(version: mhf_iel::MhfVersion) -> &'static str {
+pub(crate) fn version_to_label(version: mhf_iel::MhfVersion) -> &'static str {
     match version {
         mhf_iel::MhfVersion::S6 => "S6",
         mhf_iel::MhfVersion::S7K => "S7K",
@@ -840,6 +865,18 @@ fn default_friend_signature() -> String {
 
 fn default_wine_prefix_mode() -> String {
     WINE_PREFIX_MODE_PORTABLE.to_string()
+}
+
+fn default_server_mode() -> String {
+    SERVER_MODE_API.to_string()
+}
+
+fn normalize_server_mode(value: &str) -> String {
+    match value.trim().to_ascii_lowercase().as_str() {
+        SERVER_MODE_API => SERVER_MODE_API.to_string(),
+        SERVER_MODE_SIGNV1 => SERVER_MODE_SIGNV1.to_string(),
+        _ => SERVER_MODE_API.to_string(),
+    }
 }
 
 fn normalize_wine_prefix_mode(value: &str) -> String {
@@ -1159,6 +1196,25 @@ pub(crate) fn ensure_mezeporta_support_dirs(game_root: &Path) -> Result<(), Stri
             fs::write(&readme_path, readme)
                 .map_err(|err| format!("failed to write {}: {}", readme_path.display(), err))?;
         }
+    }
+
+    // Create default msg-board.json for custom banners, messages, and links
+    let msg_board_path = offline_images_root.join("msg-board.json");
+    if !msg_board_path.exists() {
+        let default_content = r#"{
+  "banners": [
+    { "src": "https://raw.githubusercontent.com/LilButter/Mezeporta/refs/heads/main/public/banners/BannerWelcome.png", "link": "https://github.com/Mezeporta/Erupe" },
+    { "src": "https://raw.githubusercontent.com/LilButter/Mezeporta/refs/heads/main/public/banners/BannerShow1.png", "link": "https://github.com/Mezeporta/Erupe" }
+  ],
+  "messages": [
+    { "message": "Welcome to Mezeporta!", "date": 0, "link": "https://github.com/LilButter/Mezeporta", "kind": 1 },
+    { "message": "Add a server or make your own with Erupe!", "date": 0, "link": "https://github.com/Mezeporta/Erupe", "kind": 0 }
+  ],
+  "links": [],
+  "serverTag": ""
+}"#;
+        fs::write(&msg_board_path, default_content)
+            .map_err(|err| format!("failed to write {}: {}", msg_board_path.display(), err))?;
     }
 
     Ok(())
@@ -2240,6 +2296,8 @@ fn load_state_sync_from_store(
     state_sync.launcher_prefs.wine_prefix_custom_path = normalize_wine_prefix_custom_path(
         state_sync.launcher_prefs.wine_prefix_custom_path.as_deref(),
     );
+    state_sync.launcher_prefs.server_mode =
+        normalize_server_mode(&state_sync.launcher_prefs.server_mode);
     store::get(store, "ui_prefs", &mut state_sync.ui_prefs);
     state_sync.ui_prefs.classic_launcher_recent_resolutions =
         normalize_recent_resolution_list(&state_sync.ui_prefs.classic_launcher_recent_resolutions);
@@ -2324,6 +2382,8 @@ struct LauncherPrefs {
     wine_prefix_mode: String,
     #[serde(default)]
     wine_prefix_custom_path: Option<String>,
+    #[serde(default = "default_server_mode")]
+    server_mode: String,
 }
 
 #[derive(Clone, Debug, Default, Serialize, serde::Deserialize)]
@@ -2333,6 +2393,7 @@ struct LauncherPrefUpdate {
     friend_signature: Option<String>,
     wine_prefix_mode: Option<String>,
     wine_prefix_custom_path: Option<Option<String>>,
+    server_mode: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -2394,6 +2455,7 @@ impl Default for LauncherPrefs {
             friend_signature: "none".to_string(),
             wine_prefix_mode: default_wine_prefix_mode(),
             wine_prefix_custom_path: None,
+            server_mode: default_server_mode(),
         }
     }
 }
@@ -3019,6 +3081,9 @@ async fn set_launcher_pref(
         state_sync.launcher_prefs.wine_prefix_custom_path =
             normalize_wine_prefix_custom_path(wine_prefix_custom_path.as_deref());
     }
+    if let Some(server_mode) = payload.server_mode {
+        state_sync.launcher_prefs.server_mode = normalize_server_mode(&server_mode);
+    }
     let launcher_prefs = state_sync.launcher_prefs.clone();
     state_sync
         .store
@@ -3385,6 +3450,14 @@ async fn get_server_version_info(
     endpoint: Endpoint,
 ) -> Result<Option<ServerVersionInfoPayload>, String> {
     if endpoint.url.trim().is_empty() || endpoint.url == "OFFLINEMODE" {
+        return Ok(None);
+    }
+    // Sign server doesn't serve /v2/version — skip it
+    let server_mode = {
+        let state_sync = state.state_sync.lock().await;
+        state_sync.launcher_prefs.server_mode.clone()
+    };
+    if server_mode == SERVER_MODE_SIGNV1 {
         return Ok(None);
     }
 
@@ -3848,6 +3921,13 @@ async fn set_current_endpoint(
         state_sync
             .store
             .with(|s| s.set("current_endpoint", current_endpoint.clone()));
+        // Signv1 does not serve HTTP launcher assets — return empty response
+        if state_sync.launcher_prefs.server_mode == SERVER_MODE_SIGNV1 {
+            let empty_resp = LauncherResponse::default();
+            state_sync.launcher_resp = Some(empty_resp.clone());
+            state_sync.launcher_ts = Some(SystemTime::now());
+            return Ok(empty_resp);
+        }
         launcher_request_for_endpoint(
             &state.client,
             state_sync.cancel_launcher.clone(),
@@ -3859,6 +3939,30 @@ async fn set_current_endpoint(
     state_sync.launcher_resp = Some(launcher_resp.clone());
     state_sync.launcher_ts = Some(SystemTime::now());
     Ok(launcher_resp)
+}
+
+#[tauri::command]
+async fn load_msg_board(
+    state: tauri::State<'_, TauriState>,
+) -> Result<serde_json::Value, String> {
+    let root = {
+        let state_sync = state.state_sync.lock().await;
+        state_sync.effective_folder()
+    };
+
+    let path = root.join("Mezeporta").join("Offline-Images").join("msg-board.json");
+
+    if !path.exists() {
+        return Err("file-not-found".into());
+    }
+
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("failed to read {}: {}", path.display(), e))?;
+
+    let value = serde_json::from_str(&content)
+        .map_err(|e| format!("invalid {}: {}", path.display(), e))?;
+
+    Ok(value)
 }
 
 #[tauri::command]
@@ -3975,8 +4079,78 @@ async fn auth(
     remember_me: bool,
     auth_req: JsonRequest<AuthResponse>,
 ) -> Result<AuthPayload, String> {
-    // -- 1) perform login -----------------------------------------------------
-    let mut auth_resp = auth_req.send().await.map_err(|e| e.into_frontend())?;
+    // -- 0) check server mode -------------------------------------------------
+    // Use endpoint-specific server mode if set; otherwise fall back to global launcher pref
+    let server_mode = {
+        let state_sync = state.state_sync.lock().await;
+        let endpoint_server_mode = &state_sync.current_endpoint.server_mode;
+        if endpoint_server_mode.is_empty() || endpoint_server_mode == SERVER_MODE_API {
+            state_sync.launcher_prefs.server_mode.clone()
+        } else {
+            endpoint_server_mode.clone()
+        }
+    };
+
+    let mut auth_resp = if server_mode == SERVER_MODE_SIGNV1 {
+        // Signv1 auth uses a TCP binary protocol with Blowfish encryption
+        let (host, port) = {
+            let state_sync = state.state_sync.lock().await;
+            (
+                state_sync.current_endpoint.host(),
+                state_sync.current_endpoint.launcher_port.unwrap_or(53312),
+            )
+        };
+        let cli_resp = sign_server::sign_auth(&host, port, &username, &password)
+            .map_err(|e| e.to_string())?;
+        AuthResponse {
+            current_ts: cli_resp.current_ts,
+            expiry_ts: cli_resp.expiry_ts,
+            entrance_count: cli_resp.entrance_count,
+            notices: cli_resp.notices,
+            user: server::UserData {
+                token_id: cli_resp.user.token_id,
+                token: cli_resp.user.token,
+                rights: cli_resp.user.rights,
+            },
+            characters: cli_resp
+                .characters
+                .into_iter()
+                .map(|c| CharacterData {
+                    id: c.id,
+                    name: c.name,
+                    is_female: c.is_female,
+                    weapon: c.weapon,
+                    hr: c.hr,
+                    gr: c.gr,
+                    last_login: c.last_login,
+                    returning: false,
+                })
+                .collect(),
+            mez_fez: cli_resp.mez_fez.map(|m| MezFesData {
+                id: m.id,
+                start: m.start,
+                end: m.end,
+                solo_tickets: m.solo_tickets,
+                group_tickets: m.group_tickets,
+                stalls: m.stalls,
+            }),
+            friends: cli_resp
+                .friends
+                .into_iter()
+                .map(|f| FriendData {
+                    cid: f.cid,
+                    id: f.id,
+                    name: f.name,
+                })
+                .collect(),
+            courses: vec![],
+            patch_server: String::new(),
+            alt_savedata_enabled: false,
+        }
+    } else {
+        // API server auth — HTTP/JSON
+        auth_req.send().await.map_err(|e| e.into_frontend())?
+    };
 
     let (game_root, is_offline) = {
         let state_sync = state.state_sync.lock().await;
@@ -4025,8 +4199,10 @@ async fn auth(
         ""
     };
 
-    // -- 3) fetch patch list if patch_server is set ---------------------------
-    let mut raw_patcher_resp: Option<PatcherResponse> = if !patcher_base_url.is_empty() {
+    // Fetch patch list from patch server (skipped for signv1)
+    let mut raw_patcher_resp: Option<PatcherResponse> = if server_mode == SERVER_MODE_SIGNV1 {
+        None
+    } else if !patcher_base_url.is_empty() {
         let state_sync = state.state_sync.lock().await;
         server::patcher_request(
             &state.client,
@@ -4059,7 +4235,10 @@ async fn auth(
             state_sync.cancel_shared.clone(),
         )
     };
-    let alt_client_stats = if is_offline {
+    let alt_client_stats = if server_mode == SERVER_MODE_SIGNV1 {
+        // Signv1 does not provide alt client stats
+        Default::default()
+    } else if is_offline {
         altclient_stats::AltClientStats {
             characters: altclient_stats::build_character_stats(
                 auth_resp.characters.clone(),
@@ -4122,6 +4301,16 @@ async fn get_alt_client_distributions(
     offset: Option<u32>,
     limit: Option<u32>,
 ) -> Result<altclient_stats::AltClientDistributionPage, String> {
+    let server_mode = {
+        let state_sync = state.state_sync.lock().await;
+        state_sync.launcher_prefs.server_mode.clone()
+    };
+    if server_mode == SERVER_MODE_SIGNV1 {
+        return Ok(altclient_stats::AltClientDistributionPage {
+            character_id,
+            ..Default::default()
+        });
+    }
     if character_id == 0 {
         return Ok(altclient_stats::AltClientDistributionPage {
             character_id,
@@ -4192,6 +4381,13 @@ async fn prefetch_alt_character_savedata(
     character_id: u32,
     savedata_version: Option<String>,
 ) -> Result<bool, String> {
+    let server_mode = {
+        let state_sync = state.state_sync.lock().await;
+        state_sync.launcher_prefs.server_mode.clone()
+    };
+    if server_mode == SERVER_MODE_SIGNV1 {
+        return Ok(false);
+    }
     if character_id == 0 {
         return Ok(false);
     }
@@ -4285,6 +4481,13 @@ async fn has_alt_character_savedata_version(
     character_id: u32,
     savedata_version: Option<String>,
 ) -> Result<bool, String> {
+    let server_mode = {
+        let state_sync = state.state_sync.lock().await;
+        state_sync.launcher_prefs.server_mode.clone()
+    };
+    if server_mode == SERVER_MODE_SIGNV1 {
+        return Ok(false);
+    }
     if character_id == 0 {
         return Ok(false);
     }
@@ -4321,6 +4524,13 @@ async fn read_alt_character_savedata_cache(
     character_id: u32,
     savedata_version: Option<String>,
 ) -> Result<AltCharacterSavedataCacheResponse, String> {
+    let server_mode = {
+        let state_sync = state.state_sync.lock().await;
+        state_sync.launcher_prefs.server_mode.clone()
+    };
+    if server_mode == SERVER_MODE_SIGNV1 {
+        return Err("internal-error".into());
+    }
     if character_id == 0 {
         return Err("internal-error".into());
     }
@@ -4887,10 +5097,14 @@ impl From<&server::FriendData> for mhf_iel::FriendData {
 }
 
 fn main() {
-    // Check for CLI mode before single-instance check
+    // Check for CLI mode before single-instance check.
     if cli::try_cli_launch() {
         std::process::exit(0);
     }
+
+    // GUI mode: detach console so cmd doesn't hang and the launcher is clean.
+    #[cfg(windows)]
+    detach_console_for_gui();
 
     let _single_instance_guard = acquire_single_instance_mutex();
     // Log plugin has an issue where it cannot be initialized twice.
@@ -5053,29 +5267,36 @@ fn main() {
                             warn!("failed to prepare Mezeporta support folders: {}", error);
                         }
                     });
-                    if !serverlist_url.is_empty() {
-                        let endpoints_req = server::simple_request(
-                            &state.client,
-                            cancel_serverlist,
-                            &serverlist_url,
-                        );
-                        let state_sync_mutex = state.state_sync.clone();
-                        let window = window.clone();
-                        tauri::async_runtime::spawn(async move {
-                            handle_remote_endpoints(&window, endpoints_req, state_sync_mutex).await
-                        });
-                    }
-                    if !messagelist_url.is_empty() {
-                        let messages_req = server::simple_request(
-                            &state.client,
-                            cancel_messagelist,
-                            &messagelist_url,
-                        );
-                        let state_sync_mutex = state.state_sync.clone();
-                        let window = window.clone();
-                        tauri::async_runtime::spawn(async move {
-                            handle_remote_messages(&window, messages_req, state_sync_mutex).await
-                        });
+                    // Signv1 does not expose HTTP APIs — skip remote endpoint/message fetching
+                    let server_mode = {
+                        let state_sync = &mut *state.state_sync.blocking_lock();
+                        state_sync.launcher_prefs.server_mode.clone()
+                    };
+                    if server_mode != SERVER_MODE_SIGNV1 {
+                        if !serverlist_url.is_empty() {
+                            let endpoints_req = server::simple_request(
+                                &state.client,
+                                cancel_serverlist,
+                                &serverlist_url,
+                            );
+                            let state_sync_mutex = state.state_sync.clone();
+                            let window = window.clone();
+                            tauri::async_runtime::spawn(async move {
+                                handle_remote_endpoints(&window, endpoints_req, state_sync_mutex).await
+                            });
+                        }
+                        if !messagelist_url.is_empty() {
+                            let messages_req = server::simple_request(
+                                &state.client,
+                                cancel_messagelist,
+                                &messagelist_url,
+                            );
+                            let state_sync_mutex = state.state_sync.clone();
+                            let window = window.clone();
+                            tauri::async_runtime::spawn(async move {
+                                handle_remote_messages(&window, messages_req, state_sync_mutex).await
+                            });
+                        }
                     }
                     Ok(())
                 })
@@ -5096,6 +5317,7 @@ fn main() {
                     set_remote_endpoints,
                     set_current_endpoint,
                     set_game_folder,
+                    load_msg_board,
                     set_serverlist_url,
                     set_messagelist_url,
                     shutdown_launcher,

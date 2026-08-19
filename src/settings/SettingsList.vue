@@ -33,6 +33,7 @@ import {
   setLauncherPrefs,
   friendSignatureEntriesForVersion,
   friendSignatureDisplayLabel,
+  setCurrentEndpoint,
 } from "../store";
 import SettingsItem from "./SettingsItem.vue";
 import SettingsCheckbox from "./SettingsCheckbox.vue";
@@ -1118,6 +1119,16 @@ function onFullscreenToggle() {
   setSetting("fullscreen", !store.settings.fullscreen);
 }
 
+function onServerModeToggle() {
+  playSelect();
+  const next = store.settings.serverMode === "signv1" ? "api" : "signv1";
+  storeMut.serverMode = next;
+  setLauncherPrefs({ serverMode: next });
+  if (store.currentEndpoint) {
+    void setCurrentEndpoint({ ...store.currentEndpoint, serverMode: next }, { showLoading: false });
+  }
+}
+
 function onBrightnessRangeInput(event) {
   setSetting("brightness", sliderToBright(event.target.value));
 }
@@ -1366,6 +1377,7 @@ function onMaxCharDisplayNumberInput(value) {
           </div>
         </SettingsItem>
       </div>
+
     </template>
 
     <div v-if="showLauncher && (showVersion || showSettings || showGraphics || showAudio || showControls || showAdvanced)" class="divider my-0 py-0"></div>
@@ -2109,6 +2121,34 @@ function onMaxCharDisplayNumberInput(value) {
           </template>
         </SettingsItem>
 
+        <div
+          class="settings-binary-toggle flex flex-wrap items-center justify-center gap-3 min-h-[45px] text-center cursor-pointer"
+          data-settings-info-key="launcher-server-mode"
+          data-controller-clickable="true"
+          data-controller-size="big"
+          :data-controller-toggle-state="store.settings.serverMode === 'signv1' ? 'on' : 'off'"
+          tabindex="0"
+          @click.stop.prevent="onServerModeToggle"
+        >
+          <span
+            class="transition-opacity"
+            :class="store.settings.serverMode === 'signv1' ? 'opacity-45 text-white/70' : 'text-[var(--controller-active-color)] opacity-100'"
+          >
+            {{ $t('api-label', 'API') }}
+          </span>
+          <label class="relative inline-flex items-center cursor-pointer" @click.stop.prevent="onServerModeToggle">
+            <input type="checkbox" class="sr-only peer" :checked="store.settings.serverMode === 'signv1'" @change.stop />
+            <div class="w-12 h-7 rounded-full bg-black/50 border transition-colors" :style="{ borderColor: 'var(--controller-active-color)' }"></div>
+            <div class="absolute left-[3px] top-[3px] w-5 h-5 rounded-full bg-[#f5f5f5] shadow transition-transform transition-colors peer-checked:translate-x-5" :style="store.settings.serverMode === 'signv1' ? { backgroundColor: 'var(--controller-active-color)' } : null"></div>
+          </label>
+          <span
+            class="transition-opacity"
+            :class="store.settings.serverMode === 'signv1' ? 'text-[var(--controller-active-color)] opacity-100' : 'opacity-45 text-white/70'"
+          >
+            {{ $t('signv1-label', 'SignV1') }}
+          </span>
+        </div>
+
         <SettingsCheckbox
           :model-value="store.settings.devMode"
           @update:model-value="setUiPref('devMode', $event)"
@@ -2128,6 +2168,7 @@ function onMaxCharDisplayNumberInput(value) {
         />
 
         <SettingsCheckbox
+          v-if="store.settings.serverMode !== 'signv1'"
           :model-value="store.settings.offlineImages"
           @update:model-value="setUiPref('offlineImages', $event)"
           :name="$t('offline-images-label', 'Offline-Images')"

@@ -1,4 +1,4 @@
-﻿# Core
+# Core
 cancel-button = Cancel
 save-button = Save
 add-button = Add
@@ -201,7 +201,14 @@ server-switch-existing-confirmation =
 
 launcher-sfx-label = Sound Effects
 launcher-controller-label = Controller
+launcher-server-mode-label = Server Mode
+launcher-server-mode-body = Use SignV1 (sign server) auth instead of the API server. Skips patching and launcher assets.
+server-mode-label = Server Mode
+server-mode-api-label = API
+server-mode-signv1-label = SignV1
 launcher-hardware-acceleration-label = Hardware Acceleration
+api-label = API
+signv1-label = SignV1
 sfx-volume-label = SFX Volume
 game-version-label = Version
 friend-signature-label = Signature
@@ -257,6 +264,7 @@ settings-info-launcher-resolution-body = Window size for the launcher only.
 settings-info-launcher-custom-resolution-body = Type a custom launcher width and height for the current style.
 settings-info-launcher-resolution-reset-body = Reset the saved launcher size for the current style back to its default resolution.
 settings-info-launcher-controller-body = Controller navigation for the launcher UI. Work in progress.
+settings-info-launcher-server-mode-body = Use SignV1 (sign server) auth instead of the API server. Skips patching and launcher assets.
 settings-info-launcher-hardware-acceleration-body = Linux GPU rendering. Turn off only for display issues. Restart required.
 settings-info-launcher-sfx-body = UI hover, select, and login sound effects.
 settings-info-launcher-sfx-volume-body = Volume for launcher UI sound effects. Default: 30%.

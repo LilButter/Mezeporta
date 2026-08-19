@@ -62,17 +62,39 @@ The [Wrapper](https://github.com/LilButter/Mezeporta-Wrapper) is a separate help
 | `-u, --username <USER>` | Login username | `player` |
 | `-pw, --password <PASS>` | Login password | `secret` |
 | `-s, --server <SERVER>` | Server hostname or IP | `192.168.1.100` |
-| `-p1, --launcher-port <PORT>` | Launcher port | Default: `8080` |
+| `-p1, --launcher-port <PORT>` | Launcher port | Default: `8080` for API, `53312` for Signv1 |
 | `-p2, --game-port <PORT>` | Game/entrance port | Default: `53310` |
+| `-t, --sign-server` | Use Signv1 authentication instead of API authentication | — |
 | `-c, --character <SLOT>` | Character slot index (0-based) | `0` |
-| `-HD` | Enable HD mode | Default: SD |
-| `--help` | Show this help message | — |
+| `-HD, --hd` | Enable HD mode | Default: SD |
+| `-fs, --friend-signature <SIG>` | Version/friend injection signature | `v1.52.79_04d16dc4` |
+| `--list-versions` | List all available game versions | — |
+| `--list-signatures` | List all version signatures for the selected game version | Requires `-v` |
+| `--help` | Show CLI help | — |
 
 ### Examples
 
 ```text
+# API server
 Mezeporta -v ZZ -u player -pw secret -s 192.168.1.100 -c 0
-Mezeporta -v G1 -u player -pw secret -s mezeporta.example.com -p1 8080 -p2 53310 -c 1 -HD
+
+# API server with custom ports and HD mode
+Mezeporta -v S7K -u player -pw secret -s mezeporta.example.com -p1 8080 -p2 53310 -c 1 -HD
+
+# Signv1 server
+Mezeporta -v ZZ -u player -pw secret -s 192.168.1.100 -t -c 0
+
+# Signv1 server with explicit sign port
+Mezeporta -v ZZ -u player -pw secret -s 192.168.1.100 -t -p1 53312 -c 0
+
+# Signv1 server with an explicit friend signature
+Mezeporta -v ZZ -u player -pw secret -s 192.168.1.100 -t -c 0 -fs v1.52.79_04d16dc4
+
+# List supported game versions
+Mezeporta --list-versions
+
+# List signatures for a specific game version
+Mezeporta -v ZZ --list-signatures
 ```
 
 ##

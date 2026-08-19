@@ -254,6 +254,10 @@ h2 {
     animation: character-page-pop-in 240ms cubic-bezier(0.18, 0.82, 0.28, 1) both;
 }
 
+.signv1-character-no-transition {
+    transition: none !important;
+}
+
 .classic-character-side-panel .classic-character-side-button:nth-child(2) {
     animation-delay: 35ms;
 }

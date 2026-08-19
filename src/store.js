@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api";
 import { emit } from "@tauri-apps/api/event";
-import { readDir } from "@tauri-apps/api/fs";
+import { readTextFile } from "@tauri-apps/api/fs";
 import { join } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/tauri";
 import { appWindow } from "@tauri-apps/api/window";
@@ -53,6 +53,13 @@ import {
 } from "./bridge";
 
 const DEFAULT_LAUNCHER_TAG = "LilButter™";
+
+function isSignV1Mode() {
+  if (storePrivate.settings.serverMode === "signv1") return true;
+  // Per-server signv1: check the current endpoint's server_mode
+  const ep = storePrivate.currentEndpoint;
+  return ep?.serverMode === "signv1" || ep?.server_mode === "signv1";
+}
 
 function createOfflineImageOverrideSet() {
   return {
@@ -193,6 +200,7 @@ const storePrivate = reactive({
     friendSignature: "none",
     winePrefixMode: "portable",
     winePrefixCustomPath: null,
+    serverMode: "api",
     classicLauncherWidth: 1124,
     classicLauncherHeight: 600,
     classicLauncherCustomResolution: false,
@@ -281,6 +289,12 @@ function normalizeWinePrefixMode(value) {
   const normalized = String(value ?? "").trim().toLowerCase();
   if (["system", "custom", "proton"].includes(normalized)) return normalized;
   return "portable";
+}
+
+function normalizeServerMode(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "signv1") return "signv1";
+  return "api";
 }
 
 function normalizeWinePrefixCustomPath(value) {
@@ -492,6 +506,8 @@ function isBundledAssetPath(path) {
 
 function normalizeEndpointBase(endpoint) {
   if (!endpoint?.url || endpoint.url === "OFFLINEMODE") return "";
+  // Signv1 uses a TCP binary protocol, not HTTP — skip HTTP base resolution
+  if (storePrivate.settings.serverMode === "signv1") return "";
   const rawUrl = endpoint.url.includes("://")
     ? endpoint.url
     : `http://${endpoint.url}`;
@@ -509,10 +525,13 @@ function normalizeEndpointBase(endpoint) {
 
 function resolveEndpointAsset(path, endpoint) {
   if (typeof path !== "string" || !path) return path;
-  if (/^(data:|blob:|https?:)/i.test(path)) return path;
+  if (/^(data:|blob:)/i.test(path)) return path;
   if (path.startsWith("/") && isBundledAssetPath(path)) {
     return resolveLocalAsset(path);
   }
+  // Signv1 uses a TCP binary protocol — reject all remote asset URLs
+  if (isSignV1Mode()) return null;
+  if (/^(data:|blob:|https?:)/i.test(path)) return path;
   const base = normalizeEndpointBase(endpoint);
   if (!base) return path;
   if (path.startsWith("/")) return `${base}${path}`;
@@ -887,6 +906,9 @@ function resolveLauncherPrefs(prefs = {}) {
     ),
     winePrefixCustomPath: normalizeWinePrefixCustomPath(
       prefs.winePrefixCustomPath ?? storePrivate.settings.winePrefixCustomPath
+    ),
+    serverMode: normalizeServerMode(
+      prefs.serverMode ?? storePrivate.settings.serverMode ?? "api"
     ),
   };
 }
@@ -1377,6 +1399,8 @@ function resetOfflineImageOverrides() {
 }
 
 function shouldUseOfflineImages() {
+  // Signv1 uses a TCP binary protocol — treat as offline to avoid HTTP image requests
+  if (isSignV1Mode()) return true;
   return Boolean(storePrivate.settings.offlineImages);
 }
 
@@ -1422,10 +1446,13 @@ async function loadOfflineImageOverrideFolder(folderPath) {
 }
 
 async function refreshOfflineImageOverrides() {
-  if (typeof window === "undefined" || !window.__TAURI__ || !shouldUseOfflineImages()) {
+  if (typeof window === "undefined" || !shouldUseOfflineImages()) {
     resetOfflineImageOverrides();
     return;
   }
+
+  // Load msg-board.json via Rust command for reliable filesystem access
+  await loadMsgBoard();
 
   const folder = normalizeFolderPath(storeMut.gameFolder || storePrivate.currentFolder);
   if (!folder) {
@@ -1442,6 +1469,26 @@ async function refreshOfflineImageOverrides() {
 
   storePrivate.offlineImageOverrides.classic = classic;
   storePrivate.offlineImageOverrides.ps4 = ps4;
+}
+
+async function loadMsgBoard() {
+  if (typeof window === "undefined" || !shouldUseOfflineImages()) return;
+  try {
+    const data = await handleInvoke("load_msg_board").catch(() => null);
+    if (!data || typeof data !== "object") return;
+    if (Array.isArray(data.banners)) storePrivate.banners = data.banners.map((b) => ({ ...b }));
+    if (Array.isArray(data.messages)) {
+      const now = Math.floor(Date.now() / 1000);
+      storePrivate.messages = data.messages.map((m) => ({
+        ...m,
+        date: Number(m?.date) === 0 ? now : m.date,
+      }));
+    }
+    if (Array.isArray(data.links)) storePrivate.links = data.links.map((l) => ({ ...l }));
+    if (typeof data.serverTag === "string" && data.serverTag.trim()) storePrivate.launcherTag = data.serverTag.trim();
+  } catch (_) {
+    // Ignore missing or malformed msg-board.json
+  }
 }
 
 function applyOfflineFallbackUi() {
@@ -1857,6 +1904,8 @@ function resolveSignatureFromClientMode(gameVersion, clientMode, hdVersion = fal
 async function fetchEndpointVersionInfo(endpoint) {
   if (!endpoint) return null;
   if (!endpoint.url || endpoint.url === "OFFLINEMODE") return null;
+  // Signv1 uses a TCP binary protocol, not HTTP — skip entirely
+  if (storePrivate.settings.serverMode === "signv1") return null;
 
   const base = normalizeEndpointBase(endpoint);
   if (!base) return null;
@@ -1949,6 +1998,8 @@ async function fetchEndpointVersionInfo(endpoint) {
 async function ensureServerVersionInfoForLogin(endpoint) {
   if (!endpoint) return null;
   if (!endpoint.url || endpoint.url === "OFFLINEMODE") return null;
+  // Skip version info fetch for signv1 mode — sign server doesn't serve /v2/version
+  if (storePrivate.settings.serverMode === "signv1") return null;
 
   const targetKey = endpointKey(endpoint);
   const cached = storePrivate.serverVersionInfo;
@@ -1991,6 +2042,7 @@ function normalizeEndpointForBackend(endpoint) {
     launcherPort: endpoint.launcherPort || null,
     gamePort: endpoint.gamePort || null,
     version: toBackendEndpointVersion(endpoint.version ?? storePrivate.settings.gameVersion),
+    serverMode: String(endpoint.serverMode ?? "api").trim().toLowerCase() === "signv1" ? "signv1" : "api",
   };
   if (!normalized.name || !String(normalized.name).trim()) {
     normalized.name = getEndpointServerKey(normalized) || "Server";
@@ -2233,6 +2285,17 @@ watch(
 );
 
 watch(
+  () => storePrivate.settings.serverMode,
+  async (mode) => {
+    // Switching to signv1: force offline image mode
+    // The offlineImages watcher below handles loading msg-board.json and refreshing overrides
+    if (mode === "signv1") {
+      storePrivate.settings.offlineImages = true;
+    }
+  }
+);
+
+watch(
   () => storePrivate.settings.gameVersion,
   async () => {
     if (isHydratingStore) return;
@@ -2298,6 +2361,9 @@ export async function initStore() {
   const persistedWinePrefixCustomPath = normalizeWinePrefixCustomPath(
     data.launcherPrefs?.winePrefixCustomPath ?? storePrivate.settings.winePrefixCustomPath
   );
+  const persistedServerMode = normalizeServerMode(
+    data.launcherPrefs?.serverMode ?? storePrivate.settings.serverMode ?? "api"
+  );
 
   if (data.launcherPrefs && typeof data.launcherPrefs.preloadControllerDlls === "boolean") {
     storePrivate.settings.preloadControllerDlls = data.launcherPrefs.preloadControllerDlls;
@@ -2307,6 +2373,11 @@ export async function initStore() {
   }
   storePrivate.settings.winePrefixMode = persistedWinePrefixMode;
   storePrivate.settings.winePrefixCustomPath = persistedWinePrefixCustomPath;
+  storePrivate.settings.serverMode = persistedServerMode;
+  // Signv1 does not serve HTTP launcher assets — force offline image mode
+  if (persistedServerMode === "signv1") {
+    storePrivate.settings.offlineImages = true;
+  }
 
   // ensure defaults exist (in case backend does not know them)
   if (storePrivate.settings.sfxEnabled === undefined) storePrivate.settings.sfxEnabled = false;
@@ -2322,6 +2393,9 @@ export async function initStore() {
   }
   if (storePrivate.settings.winePrefixMode === undefined) {
     storePrivate.settings.winePrefixMode = "portable";
+  }
+  if (storePrivate.settings.serverMode === undefined) {
+    storePrivate.settings.serverMode = "api";
   }
   storePrivate.settings.winePrefixMode = normalizeWinePrefixMode(
     storePrivate.settings.winePrefixMode
@@ -2381,6 +2455,7 @@ export async function initStore() {
     friendSignature: storePrivate.settings.friendSignature,
     winePrefixMode: storePrivate.settings.winePrefixMode,
     winePrefixCustomPath: storePrivate.settings.winePrefixCustomPath,
+    serverMode: storePrivate.settings.serverMode,
   });
   if (storePrivate.currentEndpoint) {
     storePrivate.currentEndpoint = {
@@ -2955,6 +3030,7 @@ export function dialogAddEndpoint() {
     gamePort: null,
     gamePath: null,
     version: DEFAULT_GAME_VERSION,
+    serverMode: "api",
   };
   storePrivate.editEndpointNew = true;
   storePrivate.dialogKind = SERVERS_DIALOG;
@@ -3145,6 +3221,13 @@ export function setLauncherPrefs(prefs) {
   if (prefs.winePrefixCustomPath !== undefined) {
     storePrivate.settings.winePrefixCustomPath = payload.winePrefixCustomPath;
   }
+  if (prefs.serverMode !== undefined) {
+    storePrivate.settings.serverMode = payload.serverMode;
+    // Signv1 does not serve HTTP launcher assets — force offline image mode
+    if (payload.serverMode === "signv1") {
+      storePrivate.settings.offlineImages = true;
+    }
+  }
   launcherPrefSyncPromise = Promise.resolve(setLauncherPreference(payload)).catch(() => undefined);
   scheduleLauncherPrefWrite(payload);
   return launcherPrefSyncPromise;
@@ -3282,6 +3365,32 @@ async function setCurrentEndpointWithOptions(currentEndpoint, options = {}) {
     if (!isCurrentRequest()) return;
 
     lastEndpointKey = nextEndpointKey;
+
+    // Signv1 does not serve HTTP launcher assets — use bundled fallbacks only
+    if (isSignV1Mode()) {
+      applyOfflineFallbackUi();
+      // Load offline overrides and msg-board AFTER clearing stale API state
+      // so the custom board is not wiped afterward
+      await refreshOfflineImageOverrides();
+      await preloadImageListWithTimeout([
+        backgroundUrl.value,
+        launcherHeaderUrl.value,
+        capcomUrl.value,
+        cogUrl.value,
+        storeMut.style === PS4_STYLE ? ps4ButtonUrl.value : classicButtonUrl.value,
+        storeMut.style === PS4_STYLE
+          ? ps4AddServerButtonUrl.value
+          : classicAddServerButtonUrl.value,
+        dialogUrl.value,
+        serverPatchUrl.value,
+        ...styleSettingsAssetUrls(),
+      ]);
+      if (isCurrentRequest() && showLoading) {
+        storePrivate.launcherAssetsLoading = false;
+      }
+      return;
+    }
+
     const resolveAsset = (path) => resolveEndpointAsset(path, endpointWithVersion);
     const applyEndpointImage = (url, assign) => {
       if (!url) {
@@ -3465,10 +3574,13 @@ async function setCurrentEndpointWithOptions(currentEndpoint, options = {}) {
     ]);
     if (!isCurrentRequest()) return;
 
-    void fetchEndpointVersionInfo(endpointWithVersion).then((versionInfo) => {
-      if (!isCurrentRequest()) return;
-      storePrivate.serverVersionInfo = versionInfo;
-    });
+    // Signv1 does not expose version info endpoints — skip version check
+    if (storePrivate.settings.serverMode !== "signv1") {
+      void fetchEndpointVersionInfo(endpointWithVersion).then((versionInfo) => {
+        if (!isCurrentRequest()) return;
+        storePrivate.serverVersionInfo = versionInfo;
+      });
+    }
   } catch (_error) {
     if (!isCurrentRequest()) return;
     if (showLoading) {
@@ -3627,7 +3739,8 @@ export async function doLogin() {
     const canCheckVersion =
       endpoint &&
       endpoint.url &&
-      endpoint.url !== "OFFLINEMODE";
+      endpoint.url !== "OFFLINEMODE" &&
+      storePrivate.settings.serverMode !== "signv1";
 
     if (canCheckVersion) {
       const versionInfo = await ensureServerVersionInfoForLogin(endpoint);

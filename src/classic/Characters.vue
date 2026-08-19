@@ -180,11 +180,19 @@ const showLoadingLog = computed(
   () => showLoginProgress.value && loadLogLines.value.length > 0
 );
 const patcherRevealVisible = ref(true);
+const signv1CardsRevealReady = ref(true);
 const characterCardsVisible = computed(
-  () => !showLoginProgress.value && patcherRevealVisible.value
+  () =>
+    !showLoginProgress.value &&
+    patcherRevealVisible.value &&
+    (store.settings.serverMode !== "signv1" || signv1CardsRevealReady.value)
 );
 const actionsVisible = computed(
-  () => actionsReady.value && !showLoginProgress.value && patcherRevealVisible.value
+  () =>
+    actionsReady.value &&
+    !showLoginProgress.value &&
+    patcherRevealVisible.value &&
+    (store.settings.serverMode !== "signv1" || signv1CardsRevealReady.value)
 );
 let patcherRevealTimer = null;
 
@@ -284,6 +292,7 @@ function triggerSizzle() {
 function resolvedLauncherOrigin() {
   if (!store.currentEndpoint || !store.currentEndpoint.url) return "";
   if (store.currentEndpoint.url === "OFFLINEMODE") return "";
+  if (store.settings.serverMode === "signv1") return "";
 
   const rawUrl = store.currentEndpoint.url.includes("://")
     ? store.currentEndpoint.url
@@ -301,6 +310,7 @@ function resolvedLauncherOrigin() {
 }
 
 function portraitUrlsForCharacter(character) {
+  if (store.settings.serverMode === "signv1") return [];
   const cacheBust = character?.lastLogin || Date.now();
   const characterId = Number(character?.id);
   const base = resolvedLauncherOrigin();
@@ -350,6 +360,18 @@ function characterPagePreloadUrls() {
     return [fallback, ...portraitUrlsForCharacter(character)];
   });
 
+  const characterWeaponIconUrls = store.characters.flatMap((character) => {
+    if (
+      !character ||
+      character.id === null ||
+      character.placeholder ||
+      typeof character.weapon !== "number"
+    ) {
+      return [];
+    }
+    return [assetUrl(`/weapons/${character.weapon}.png`)];
+  });
+
   return [
     backgroundUrl.value,
     launcherHeaderUrl.value,
@@ -371,6 +393,7 @@ function characterPagePreloadUrls() {
     assetUrl("/extra/ChestClosed.png"),
     assetUrl("/extra/ChestOpen.png"),
     ...characterUnitUrls,
+    ...characterWeaponIconUrls,
   ].filter(Boolean);
 }
 
@@ -381,7 +404,14 @@ async function preloadCharacterPageImages(blockProgress = false) {
   }
 
   const urls = [...new Set(characterPagePreloadUrls())];
-  await Promise.allSettled(urls.map(preloadCharacterImage));
+  const results = await Promise.all(
+    urls.map(async (url) => ({ url, ok: await preloadCharacterImage(url) }))
+  );
+
+  const failed = results.filter((r) => !r.ok);
+  if (failed.length > 0) {
+    console.warn("[character-preload] failed to load:", failed.map((r) => r.url));
+  }
 
   if (request !== characterPagePreloadRequest) return;
   characterPageAssetsReady.value = true;
@@ -477,6 +507,9 @@ function startLoginProgress() {
   clearRevealTimer();
   clearPatcherRevealTimer();
   patcherRevealVisible.value = true;
+  if (store.settings.serverMode === "signv1") {
+    signv1CardsRevealReady.value = false;
+  }
   cycleReady.value = false;
   actionsReady.value = false;
   resetProgressAnimation();
@@ -485,7 +518,7 @@ function startLoginProgress() {
   startLoadingFeedback();
   void preloadCharacterPageImages(true);
 
-  if (!hasRealCharacter.value) {
+  if (!hasRealCharacter.value || store.settings.serverMode === "signv1") {
     altSavedataReady.value = true;
   } else {
     altSavedataReady.value = false;
@@ -493,6 +526,11 @@ function startLoginProgress() {
   }
 
   scheduleNextProgressFrame(loadingFrameDuration(loadingFrameIndex));
+}
+
+function onLoadingOverlayBeforeLeave() {
+  if (store.settings.serverMode !== "signv1") return;
+  signv1CardsRevealReady.value = true;
 }
 
 function stopLoginProgress() {
@@ -614,7 +652,7 @@ function transitionToCompleteAfterLoop() {
 }
 
 async function prefetchSelectedCharacterSavedata(blockProgress = false) {
-  if (!hasRealCharacter.value) {
+  if (!hasRealCharacter.value || store.settings.serverMode === "signv1") {
     if (blockProgress) {
       altSavedataReady.value = true;
       maybeFinishLoginProgress();
@@ -679,10 +717,20 @@ function onCurrentPortraitReady(cycle) {
 }
 
 function revealAdjacentDelayed() {
-  if (adjacentTimer) clearTimeout(adjacentTimer);
+  if (adjacentTimer) {
+    clearTimeout(adjacentTimer);
+    adjacentTimer = null;
+  }
+
+  if (store.settings.serverMode === "signv1") {
+    adjacentVisible.value = true;
+    return;
+  }
+
   adjacentVisible.value = false;
   adjacentTimer = setTimeout(() => {
     adjacentVisible.value = true;
+    adjacentTimer = null;
   }, 550);
 }
 
@@ -760,7 +808,7 @@ watch(characterIndex, (newIndex, oldIndex) => {
     addAnimationClass(aclass);
     characterTimeout = setTimeout(clearAnimationClass, 300);
   }, 0);
-  if (!showLoginProgress.value) {
+  if (!showLoginProgress.value && store.settings.serverMode !== "signv1") {
     void prefetchSelectedCharacterSavedata(false);
   }
 });
@@ -854,7 +902,7 @@ function onDeleteCharacterClick() {
 <template>
   <div class="h-full w-full relative" ref="rootRef">
     <div class="flex flex-col items-center mt-4 mr-[-12px] relative">
-      <transition name="loading-fade">
+      <transition name="loading-fade" @before-leave="onLoadingOverlayBeforeLeave">
         <div
           v-if="showLoginProgress"
           class="absolute left-0 right-0 top-[39px] bottom-[39px] z-[20] pointer-events-none flex flex-col items-center justify-center"
@@ -907,7 +955,7 @@ function onDeleteCharacterClick() {
 
       <div
         class="absolute transition-opacity duration-200"
-        :class="characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+        :class="[characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none', store.settings.serverMode === 'signv1' ? 'signv1-character-no-transition' : '' ]"
         v-if="adjacentVisible && prevPrevCharacter"
       >
         <div class="relative z-[3] top-[-20px]">
@@ -916,7 +964,7 @@ function onDeleteCharacterClick() {
       </div>
       <div
         class="absolute transition-opacity duration-200"
-        :class="characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+        :class="[characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none', store.settings.serverMode === 'signv1' ? 'signv1-character-no-transition' : '' ]"
         v-if="adjacentVisible && prevCharacter"
       >
         <div class="relative z-[4]">
@@ -926,7 +974,10 @@ function onDeleteCharacterClick() {
 
       <Character
         class="character z-[5] transition-opacity duration-200"
-        :class="characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+        :class="[
+          characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none',
+          store.settings.serverMode === 'signv1' ? 'signv1-character-no-transition' : '',
+        ]"
         :character="character"
         :selectable="true"
         :load-cycle="store.unitCardLoadCycle"
@@ -940,7 +991,7 @@ function onDeleteCharacterClick() {
 
       <div
         class="absolute transition-opacity duration-200"
-        :class="characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+        :class="[characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none', store.settings.serverMode === 'signv1' ? 'signv1-character-no-transition' : '' ]"
         v-if="adjacentVisible && nextCharacter"
       >
         <div class="relative z-[4] top-[80px]">
@@ -949,7 +1000,7 @@ function onDeleteCharacterClick() {
       </div>
       <div
         class="absolute transition-opacity duration-200"
-        :class="characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+        :class="[characterCardsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none', store.settings.serverMode === 'signv1' ? 'signv1-character-no-transition' : '' ]"
         v-if="adjacentVisible && nextNextCharacter"
       >
         <div class="relative z-[3] top-[100px]">

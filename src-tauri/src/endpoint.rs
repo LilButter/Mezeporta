@@ -19,6 +19,8 @@ pub struct Endpoint {
     pub version: mhf_iel::MhfVersion,
     #[serde(default)]
     pub is_remote: bool,
+    #[serde(default)]
+    pub server_mode: String,
 }
 
 impl PartialEq for Endpoint {

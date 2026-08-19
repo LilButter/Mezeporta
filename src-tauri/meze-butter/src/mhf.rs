@@ -1,4 +1,4 @@
-﻿use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -458,14 +458,17 @@ pub fn run_mhf(config: MhfConfig) -> Result<isize> {
     let game_running_for_inject = Arc::clone(&game_running);
     let friend_layout_dll_name = prepared.friend_layout_dll_name;
     let game_version = config.version;
+
     let inj_handle = thread::spawn(move || {
         while game_running_for_inject.load(Ordering::Relaxed) {
-            if friend_injection::maybe_inject_friends(
+            let result = friend_injection::maybe_inject_friends(
                 game_version,
                 friend_layout_dll_name,
                 inject_signature.as_deref(),
                 &friends_for_inject,
-            ) {
+            );
+
+            if result {
                 break;
             }
             thread::sleep(Duration::from_millis(100));
