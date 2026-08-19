@@ -53,7 +53,8 @@ _FOR S7K version move ALL files from the provided folder into the game directory
 > [!NOTE]
 > This is now OPTIONAL and you may connect to Erupe servers normally using the SignV1 option.
 
-The [Wrapper](https://github.com/LilButter/Mezeporta-Wrapper) is a separate helper for Erupe servers and is required for the API server features to work (e.g. Mail, Distribution, Character Book, and Events)
+The [Wrapper](https://github.com/LilButter/Mezeporta-Wrapper) is a separate helper for Erupe servers and is required for the API server features to work.
+(e.g. Mail, Distribution, Character Book, and Events)
 
 ##
 ### CLI Commands
