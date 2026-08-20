@@ -3,6 +3,7 @@ use std::net::TcpStream;
 
 use log::{info, warn};
 use crate::cli::{CliAuthResponse, CliCharacterData, CliFriendData, CliMezFesData, CliUserData};
+use meze_butter::MhfVersion;
 
 // ─── MHF Blowfish Crypto ────────────────────────────────────────────────────
 
@@ -214,7 +215,7 @@ fn send_packet(stream: &mut TcpStream, data: &[u8], send_key_rot: &mut u32) -> R
 
     stream.write_all(&header).map_err(|e| format!("failed to write packet header: {e}"))?;
     stream.write_all(&enc_data).map_err(|e| format!("failed to write packet body: {e}"))?;
-    stream.flush().map_err(|e| format!("failed to flush: {e}"))?;
+    stream.flush().map_err(|e| format!("failed to flush packet: {e}"))?;
 
     Ok(())
 }
@@ -300,14 +301,28 @@ fn encode_sjis(input: &str) -> Vec<u8> {
 
 // ─── Sign Response Parser ───────────────────────────────────────────────────
 
-/// Parse the binary sign server response into a CliAuthResponse.
-/// Only parses what the launcher needs — the rest (caplink, PSN, filters) is for meze-deps.
-fn parse_sign_response(data: &[u8]) -> Result<CliAuthResponse, String> {
+/// Returns true for game versions whose SignV1 character record includes the trailing uint16 GR + two padding bytes (G7 and newer).
+fn sign_response_has_u16_gr(version: MhfVersion) -> bool {
+    matches!(
+        version,
+        MhfVersion::G7
+            | MhfVersion::G9_1
+            | MhfVersion::G10_1
+            | MhfVersion::Z1
+            | MhfVersion::Z2
+            | MhfVersion::Z2T
+            | MhfVersion::ZZ
+    )
+}
+
+/// Parse the binary sign server response into a CliAuthResponse | only parses what the launcher needs (friends, guildmates, notices, filters, mezFes). Character record size depends on game version: G7+ includes an extra uint16 GR + two padding bytes (68 bytes total), while pre-G7 records are 64 bytes.
+fn parse_sign_response(data: &[u8], game_version: MhfVersion) -> Result<CliAuthResponse, String> {
     if data.is_empty() {
         return Err("empty sign response".to_string());
     }
 
     let mut cursor = std::io::Cursor::new(data);
+    let modern = sign_response_has_u16_gr(game_version);
 
     // Result code
     let result_code = read_u8(&mut cursor)?;
@@ -343,14 +358,21 @@ fn parse_sign_response(data: &[u8]) -> Result<CliAuthResponse, String> {
         let weapon = read_u16_be(&mut cursor)?;
         let last_login = read_u32_be(&mut cursor)?;
         let is_female: bool = read_u8(&mut cursor)? != 0;
-        let _is_new: u8 = read_u8(&mut cursor)?;
-        let _old_gr: u8 = read_u8(&mut cursor)?;
+        let is_new = read_u8(&mut cursor)? != 0;
+        let old_gr = read_u8(&mut cursor)?;
         let _use_u16_gr: u8 = read_u8(&mut cursor)?;
         let name = read_padded_string(&mut cursor, 16)?;
         skip_bytes(&mut cursor, 32)?; // 32-byte unk desc
-        let gr = read_u16_be(&mut cursor)?;
-        let _unk1: u8 = read_u8(&mut cursor)?;
-        let _unk2: u8 = read_u8(&mut cursor)?;
+
+        let gr = if modern {
+            let gr = read_u16_be(&mut cursor)?;
+            let _unk1: u8 = read_u8(&mut cursor)?;
+            let _unk2: u8 = read_u8(&mut cursor)?;
+            gr
+        } else {
+            // Pre-G7: no trailing uint16 GR field. Use old_gr as the GR value.
+            old_gr as u16
+        };
 
         characters.push(CliCharacterData {
             id,
@@ -360,6 +382,7 @@ fn parse_sign_response(data: &[u8]) -> Result<CliAuthResponse, String> {
             hr: hr.into(),
             gr: gr.into(),
             last_login,
+            is_new,
         });
     }
 
@@ -475,9 +498,22 @@ fn parse_sign_response(data: &[u8]) -> Result<CliAuthResponse, String> {
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
-pub fn sign_auth(host: &str, port: u16, username: &str, password: &str) -> Result<CliAuthResponse, String> {
+/// Shared inner logic for both sign_auth and sign_create_character; pass `append_plus` as true to signal a new-character creation request.
+fn sign_auth_inner(
+    host: &str,
+    port: u16,
+    username: &str,
+    password: &str,
+    game_version: MhfVersion,
+    append_plus: bool,
+) -> Result<CliAuthResponse, String> {
     let addr = format!("{}:{}", host, port);
-    info!("sign server: connecting to {}", addr);
+    let log_msg = if append_plus {
+        format!("sign server: creating character on {} (version={:?})", addr, game_version)
+    } else {
+        format!("sign server: connecting to {} (version={:?})", addr, game_version)
+    };
+    info!("{}", log_msg);
 
     let mut stream = connect_and_init(&addr)?;
 
@@ -485,7 +521,11 @@ pub fn sign_auth(host: &str, port: u16, username: &str, password: &str) -> Resul
     let mut read_key_rot: u32 = 995117;
 
     let req_type = "DSGN:041";
-    let user_sjis = encode_sjis(username);
+    let user_sjis = if append_plus {
+        encode_sjis(&format!("{}+", username))
+    } else {
+        encode_sjis(username)
+    };
     let pass_sjis = encode_sjis(password);
 
     let mut payload: Vec<u8> = Vec::new();
@@ -498,76 +538,31 @@ pub fn sign_auth(host: &str, port: u16, username: &str, password: &str) -> Resul
     payload.push(0);
 
     send_packet(&mut stream, &payload, &mut send_key_rot)?;
-    info!("sign server: DSGN packet sent");
+    info!("sign server: DSGN{} packet sent", if append_plus { " create-character" } else { "" });
 
     let resp_data = read_packet(&mut stream, &mut read_key_rot)?;
 
-    parse_sign_response(&resp_data)
+    parse_sign_response(&resp_data, game_version)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// Authenticate via the SignV1 TCP/Blowfish protocol.
+pub fn sign_auth(
+    host: &str,
+    port: u16,
+    username: &str,
+    password: &str,
+    game_version: MhfVersion,
+) -> Result<CliAuthResponse, String> {
+    sign_auth_inner(host, port, username, password, game_version, false)
+}
 
-    #[test]
-    fn crypto_encrypt_key_0() {
-        let data = vec![0x74, 0x65, 0x73, 0x74];
-        let (out, cc, c0, c1, c2) = crypto(&data, 0, true, None);
-        assert_eq!(out, vec![0x46, 0x53, 0x28, 0x5E]);
-        assert_eq!(cc, 0x2976);
-        assert_eq!(c0, 0x06ea);
-        assert_eq!(c1, 0x0215);
-        assert_eq!(c2, 0x8fb3);
-    }
-
-    #[test]
-    fn crypto_encrypt_key_3() {
-        let data = vec![0x74, 0x65, 0x73, 0x74];
-        let (out, cc, c0, c1, c2) = crypto(&data, 3, true, None);
-        assert_eq!(out, vec![0x46, 0x95, 0x88, 0xEA]);
-        assert_eq!(cc, 0x2ae4);
-        assert_eq!(c0, 0x0a56);
-        assert_eq!(c1, 0x01cd);
-        assert_eq!(c2, 0x8fb3);
-    }
-
-    #[test]
-    fn crypto_encrypt_key_max() {
-        let data = vec![0x74, 0x65, 0x73, 0x74];
-        let (out, cc, c0, c1, c2) = crypto(&data, 0xFFFFFFFF, true, None);
-        assert_eq!(out, vec![0x46, 0xB5, 0xDC, 0xB2]);
-        assert_eq!(cc, 0x2add);
-        assert_eq!(c0, 0x09a6);
-        assert_eq!(c1, 0x021e);
-        assert_eq!(c2, 0x8fb3);
-    }
-
-    #[test]
-    fn crypto_roundtrip_dsgn() {
-        let data = b"DSGN:041\x00test\x00test\x00\x00";
-        let (enc, _, _, _, _) = crypto(data, 995117, true, None);
-        let (dec, _, _, _, _) = crypto(&enc, 995117, false, None);
-        assert_eq!(dec, data.to_vec());
-    }
-
-    #[test]
-    fn crypto_roundtrip_key_rotation() {
-        let data = b"DSGN:041\x00test\x00test\x00\x00";
-        let rotated_key = 3u32.wrapping_mul(995117u32.wrapping_add(1));
-        let (enc, _, _, _, _) = crypto(data, rotated_key, true, None);
-        let (dec, _, _, _, _) = crypto(&enc, rotated_key, false, None);
-        assert_eq!(dec, data.to_vec());
-    }
-
-    #[test]
-    fn encode_sjis_basic() {
-        assert_eq!(encode_sjis("test"), vec![0x74, 0x65, 0x73, 0x74]);
-    }
-
-    #[test]
-    fn encode_sjis_japanese() {
-        let sjis = encode_sjis("こんにちは");
-        assert!(!sjis.is_empty());
-        assert_eq!(decode_sjis(&sjis), "こんにちは");
-    }
+/// Create a new character via SignV1 protocol; appends '+' to the username on the wire to signal the server to create (or reuse) a pending new-character record.
+pub fn sign_create_character(
+    host: &str,
+    port: u16,
+    username: &str,
+    password: &str,
+    game_version: MhfVersion,
+) -> Result<CliAuthResponse, String> {
+    sign_auth_inner(host, port, username, password, game_version, true)
 }

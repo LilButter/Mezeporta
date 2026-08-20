@@ -5,7 +5,7 @@ use crate::endpoint::Endpoint;
 use log::warn;
 use serde::{Deserialize, Serialize};
 
-const APP_NAME: &str = "Mezeporta 1.5.2";
+const APP_NAME: &str = "Mezeporta 1.5.4";
 
 #[derive(Default, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]

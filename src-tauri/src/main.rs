@@ -1,7 +1,8 @@
 
 #[cfg(windows)]
 fn detach_console_for_gui() {
-    // detach CLI at GUI boot.
+    // When launched from cmd, a console-subsystem process inherits cmd's console.
+    // In GUI mode (no CLI args), detach the console.
     use windows::Win32::System::Console::FreeConsole;
     let _ = unsafe { FreeConsole() };
 }
@@ -3452,7 +3453,7 @@ async fn get_server_version_info(
     if endpoint.url.trim().is_empty() || endpoint.url == "OFFLINEMODE" {
         return Ok(None);
     }
-    // Sign server doesn't serve /v2/version — skip it
+
     let server_mode = {
         let state_sync = state.state_sync.lock().await;
         state_sync.launcher_prefs.server_mode.clone()
@@ -3921,7 +3922,7 @@ async fn set_current_endpoint(
         state_sync
             .store
             .with(|s| s.set("current_endpoint", current_endpoint.clone()));
-        // Signv1 does not serve HTTP launcher assets — return empty response
+        // Signv1 does not serve HTTP launcher assets.
         if state_sync.launcher_prefs.server_mode == SERVER_MODE_SIGNV1 {
             let empty_resp = LauncherResponse::default();
             state_sync.launcher_resp = Some(empty_resp.clone());
@@ -4093,14 +4094,15 @@ async fn auth(
 
     let mut auth_resp = if server_mode == SERVER_MODE_SIGNV1 {
         // Signv1 auth uses a TCP binary protocol with Blowfish encryption
-        let (host, port) = {
+        let (host, port, game_version) = {
             let state_sync = state.state_sync.lock().await;
             (
                 state_sync.current_endpoint.host(),
                 state_sync.current_endpoint.launcher_port.unwrap_or(53312),
+                state_sync.current_endpoint.version,
             )
         };
-        let cli_resp = sign_server::sign_auth(&host, port, &username, &password)
+        let cli_resp = sign_server::sign_auth(&host, port, &username, &password, game_version)
             .map_err(|e| e.to_string())?;
         AuthResponse {
             current_ts: cli_resp.current_ts,
@@ -4115,6 +4117,7 @@ async fn auth(
             characters: cli_resp
                 .characters
                 .into_iter()
+                .filter(|c| !c.is_new)
                 .map(|c| CharacterData {
                     id: c.id,
                     name: c.name,
@@ -4148,7 +4151,7 @@ async fn auth(
             alt_savedata_enabled: false,
         }
     } else {
-        // API server auth — HTTP/JSON
+        // API server auth
         auth_req.send().await.map_err(|e| e.into_frontend())?
     };
 
@@ -4659,21 +4662,175 @@ async fn create_character(
     window: Window,
     mut state: tauri::State<'_, TauriState>,
 ) -> Result<(), String> {
-    let req = get_create_character_request(&mut state).await?;
-    let character = match req.send().await {
-        Ok(data) => data,
-        Err(server::Error::Server(401, _)) => {
-            reauth(&mut state).await?;
-            let req = get_create_character_request(&mut state).await?;
-            req.send().await.map_err(|e| e.into_frontend())?
+    // Determine server mode to choose the correct creation path
+    let server_mode = {
+        let state_sync = state.state_sync.lock().await;
+        let endpoint_server_mode = &state_sync.current_endpoint.server_mode;
+        if endpoint_server_mode.is_empty() || endpoint_server_mode == SERVER_MODE_API {
+            state_sync.launcher_prefs.server_mode.clone()
+        } else {
+            endpoint_server_mode.clone()
         }
-        Err(e) => return Err(e.into_frontend()),
     };
-    #[cfg(not(windows))]
-    {
-        let app_handle = window.app_handle();
-        let (config, game_root, launcher_prefs) = {
+
+    if server_mode == SERVER_MODE_SIGNV1 {
+        // SignV1 character creation: authenticate with '+' suffix to signal a new-character request, then launch it.
+        let (host, port, game_version, username, password) = {
+            let state_sync = state.state_sync.lock().await;
+            let username = state_sync.session_username.clone();
+            let password = state_sync.user_manager.get(&state_sync.current_endpoint).1;
+            (
+                state_sync.current_endpoint.host(),
+                state_sync.current_endpoint.launcher_port.unwrap_or(53312),
+                state_sync.current_endpoint.version,
+                username,
+                password,
+            )
+        };
+
+        let cli_resp = sign_server::sign_create_character(
+            &host,
+            port,
+            &username,
+            &password,
+            game_version,
+        )
+        .map_err(|e| e.to_string())?;
+
+        // Find the pending (is_new) character in the response
+        let pending_char = cli_resp
+            .characters
+            .iter()
+            .find(|c| c.is_new)
+            .ok_or("no pending character found in sign response")?
+            .clone();
+
+        // Include the pending (is_new) character in auth state so the exit handler can locate it by ID when building MhfConfig.
+        let new_auth_resp = AuthResponse {
+            current_ts: cli_resp.current_ts,
+            expiry_ts: cli_resp.expiry_ts,
+            entrance_count: cli_resp.entrance_count,
+            notices: cli_resp.notices,
+            user: server::UserData {
+                token_id: cli_resp.user.token_id,
+                token: cli_resp.user.token,
+                rights: cli_resp.user.rights,
+            },
+            characters: cli_resp
+                .characters
+                .into_iter()
+                .map(|c| CharacterData {
+                    id: c.id,
+                    name: c.name,
+                    is_female: c.is_female,
+                    weapon: c.weapon,
+                    hr: c.hr,
+                    gr: c.gr,
+                    last_login: c.last_login,
+                    returning: false,
+                })
+                .collect(),
+            mez_fez: cli_resp.mez_fez.map(|m| MezFesData {
+                id: m.id,
+                start: m.start,
+                end: m.end,
+                solo_tickets: m.solo_tickets,
+                group_tickets: m.group_tickets,
+                stalls: m.stalls,
+            }),
+            friends: cli_resp
+                .friends
+                .into_iter()
+                .map(|f| FriendData {
+                    cid: f.cid,
+                    id: f.id,
+                    name: f.name,
+                })
+                .collect(),
+            courses: vec![],
+            patch_server: String::new(),
+            alt_savedata_enabled: false,
+        };
+
+        #[cfg(not(windows))]
+        {
+            let app_handle = window.app_handle();
             let mut state_sync = state.state_sync.lock().await;
+            state_sync.auth_resp = Some(new_auth_resp);
+            state_sync.store.with(|s| {
+                s.set("last_char_id", pending_char.id);
+            });
+            let (config, game_root, launcher_prefs) = build_launch_bundle(&state_sync, pending_char.id, true)?;
+            drop(state_sync);
+            run_mhf(config, game_root, launcher_prefs, false, Some(app_handle))?;
+
+            let mut state_sync = state.state_sync.lock().await;
+            state_sync.skip_child_cleanup_once = true;
+            cancel_all_requests(&mut state_sync);
+            drop(state_sync);
+            window.app_handle().exit(0);
+            return Ok(());
+        }
+
+        #[cfg(windows)]
+        {
+            let mut state_sync = state.state_sync.lock().await;
+            state_sync.exit_reason = Some(ExitSignal::RunGame(pending_char.id, true));
+            state_sync.auth_resp = Some(new_auth_resp);
+            state_sync.store.with(|s| {
+                s.set("last_char_id", pending_char.id);
+            });
+            cancel_all_requests(&mut state_sync);
+            drop(state_sync);
+            window.close().map_err(|e| {
+                error!("failed to close window: {}", e);
+                "internal-error"
+            })?;
+            Ok(())
+        }
+    } else {
+        // API mode: use existing HTTP character creation flow
+        let req = get_create_character_request(&mut state).await?;
+        let character = match req.send().await {
+            Ok(data) => data,
+            Err(server::Error::Server(401, _)) => {
+                reauth(&mut state).await?;
+                let req = get_create_character_request(&mut state).await?;
+                req.send().await.map_err(|e| e.into_frontend())?
+            }
+            Err(e) => return Err(e.into_frontend()),
+        };
+        #[cfg(not(windows))]
+        {
+            let app_handle = window.app_handle();
+            let (config, game_root, launcher_prefs) = {
+                let mut state_sync = state.state_sync.lock().await;
+                state_sync
+                    .auth_resp
+                    .as_mut()
+                    .ok_or("Auth data was not set")?
+                    .characters
+                    .push(character.clone());
+                state_sync.store.with(|s| {
+                    s.set("last_char_id", character.id);
+                });
+                build_launch_bundle(&state_sync, character.id, true)?
+            };
+
+            run_mhf(config, game_root, launcher_prefs, false, Some(app_handle))?;
+
+            let mut state_sync = state.state_sync.lock().await;
+            state_sync.skip_child_cleanup_once = true;
+            cancel_all_requests(&mut state_sync);
+            drop(state_sync);
+            window.app_handle().exit(0);
+            return Ok(());
+        }
+
+        #[cfg(windows)]
+        {
+            let mut state_sync = state.state_sync.lock().await;
+            state_sync.exit_reason = Some(ExitSignal::RunGame(character.id, true));
             state_sync
                 .auth_resp
                 .as_mut()
@@ -4683,39 +4840,14 @@ async fn create_character(
             state_sync.store.with(|s| {
                 s.set("last_char_id", character.id);
             });
-            build_launch_bundle(&state_sync, character.id, true)?
-        };
-
-        run_mhf(config, game_root, launcher_prefs, false, Some(app_handle))?;
-
-        let mut state_sync = state.state_sync.lock().await;
-        state_sync.skip_child_cleanup_once = true;
-        cancel_all_requests(&mut state_sync);
-        drop(state_sync);
-        window.app_handle().exit(0);
-        return Ok(());
-    }
-
-    #[cfg(windows)]
-    {
-        let mut state_sync = state.state_sync.lock().await;
-        state_sync.exit_reason = Some(ExitSignal::RunGame(character.id, true));
-        state_sync
-            .auth_resp
-            .as_mut()
-            .ok_or("Auth data was not set")?
-            .characters
-            .push(character.clone());
-        state_sync.store.with(|s| {
-            s.set("last_char_id", character.id);
-        });
-        cancel_all_requests(&mut state_sync);
-        drop(state_sync);
-        window.close().map_err(|e| {
-            error!("failed to close window: {}", e);
-            "internal-error"
-        })?;
-        Ok(())
+            cancel_all_requests(&mut state_sync);
+            drop(state_sync);
+            window.close().map_err(|e| {
+                error!("failed to close window: {}", e);
+                "internal-error"
+            })?;
+            Ok(())
+        }
     }
 }
 
@@ -5098,6 +5230,8 @@ impl From<&server::FriendData> for mhf_iel::FriendData {
 
 fn main() {
     // Check for CLI mode before single-instance check.
+    // A console-subsystem executable launched from cmd waits for us to exit,
+    // so stdin is properly owned by this process.
     if cli::try_cli_launch() {
         std::process::exit(0);
     }
@@ -5138,7 +5272,7 @@ fn main() {
                 );
             }
 
-            // initialize the plugin; we'll open the actual Store in `setup`
+            // initialize the plugin; the Store is opened in `setup`
             let store_plugin = tauri_plugin_store::Builder::default().build();
 
             let mut builder = tauri::Builder::default().plugin(store_plugin);
@@ -5267,7 +5401,7 @@ fn main() {
                             warn!("failed to prepare Mezeporta support folders: {}", error);
                         }
                     });
-                    // Signv1 does not expose HTTP APIs — skip remote endpoint/message fetching
+                    // Signv1 does not expose HTTP APIs
                     let server_mode = {
                         let state_sync = &mut *state.state_sync.blocking_lock();
                         state_sync.launcher_prefs.server_mode.clone()

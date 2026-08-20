@@ -13,7 +13,9 @@ use crate::SERVER_MODE_SIGNV1;
 use crate::settings;
 use crate::sign_server;
 
-/// Needed for CLI input
+/// Reads a line from stdin.
+/// Works correctly when the executable is console-subsystem and launched from cmd,
+/// since cmd waits for the process and stdin is properly inherited.
 fn read_console_line() -> String {
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).ok();
@@ -72,6 +74,8 @@ pub struct CliCharacterData {
     pub hr: u32,
     pub gr: u32,
     pub last_login: u32,
+    #[serde(default)]
+    pub is_new: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -299,6 +303,7 @@ async fn cli_auth(
     }
 
     if !status.is_success() {
+        // Try to extract error message
         if let Ok(err) = serde_json::from_str::<CliApiError>(&body) {
             if !err.error.is_empty() {
                 return Err(err.error);
@@ -381,7 +386,7 @@ fn build_cli_launch_config(
         char_gr: char.gr,
         char_hr: char.hr,
         char_ids,
-        char_new: false,
+        char_new: char.is_new,
         user_token_id: auth_resp.user.token_id,
         user_token: auth_resp.user.token.clone(),
         user_name: args.username.clone(),
@@ -434,6 +439,7 @@ fn resolve_launcher_font_path(game_root: &Path, version: mhf_iel::MhfVersion) ->
 pub fn try_cli_launch() -> bool {
     let args = std::env::args().collect::<Vec<String>>();
 
+    // Check for help first
     if args.iter().any(|a| a.as_str() == "--help" || a.as_str() == "-h") {
         print_usage();
         return true;
@@ -534,8 +540,8 @@ pub fn try_cli_launch() -> bool {
         return true;
     }
 
-    // Interactive version signature prompt (sign server mode, no -fs provided)
-    if cli_args.sign_server && cli_args.friend_signature.is_none() {
+    // Interactive version signature prompt (no -fs provided)
+    if cli_args.friend_signature.is_none() {
         let version = match crate::label_to_version(&cli_args.version) {
             Some(v) => v,
             None => {
@@ -634,11 +640,14 @@ pub fn try_cli_launch() -> bool {
     // Perform auth
     let auth_resp = if cli_args.sign_server {
         // Signv1 (sign server) auth — TCP + Blowfish crypto
+        let version = crate::label_to_version(&cli_args.version)
+            .unwrap_or(mhf_iel::MhfVersion::ZZ);
         match sign_server::sign_auth(
             &cli_args.server_host,
             cli_args.launcher_port,
             &cli_args.username,
             &cli_args.password,
+            version,
         ) {
             Ok(resp) => resp,
             Err(e) => {
@@ -712,6 +721,10 @@ pub fn try_cli_launch() -> bool {
         config.char_id, config.char_name, config.version as u8
     );
 
+    // Launch!
+    // On Windows, run_mhf ignores game_root, launcher_prefs, wait_for_exit, and app_handle
+    // On Linux, minimal values are passed since CLI mode has no Tauri app handle.
+    // On success the game runs in-process; always return true so main() exits cleanly.
     match run_mhf(
         config,
         game_root.clone(),

@@ -1,4 +1,4 @@
-﻿use windows::{
+use windows::{
     core::HSTRING,
     Win32::{
         Foundation::{GlobalFree, HANDLE, HGLOBAL},
@@ -52,11 +52,30 @@ pub fn get_or_create_mutex(name: impl Into<HSTRING> + Copy) -> Result<HANDLE> {
 }
 
 pub fn create_global_alloc() -> Result<HGLOBAL> {
-    unsafe { GlobalAlloc(GLOBAL_ALLOC_FLAGS(0x42), 0x8ae0) }.or(Err(Error::GlobalAlloc))
+    eprintln!("[debug] create_global_alloc: calling GlobalAlloc(GMEM_ZEROINIT, 0x8ae0)");
+    let result = unsafe { GlobalAlloc(GLOBAL_ALLOC_FLAGS(0x42), 0x8ae0) };
+    match result {
+        Ok(h) => {
+            eprintln!("[debug] create_global_alloc: success, handle=0x{:x}", h.0 as usize);
+            Ok(h)
+        }
+        Err(e) => {
+            eprintln!("[debug] create_global_alloc: FAILED, err={}", e);
+            Err(Error::GlobalAlloc)
+        }
+    }
 }
 
 pub fn release_global_alloc(handle: HGLOBAL) -> Result<HGLOBAL> {
-    unsafe { GlobalFree(handle) }.or(Err(Error::GlobalAlloc))
+    eprintln!("[debug] release_global_alloc: calling GlobalFree(0x{:x})", handle.0 as usize);
+    // GlobalFree returns NULL on success and the original handle on failure.
+    let result = unsafe { GlobalFree(handle) };
+    match &result {
+        Ok(_) => eprintln!("[debug] release_global_alloc: windows-rs returned Ok"),
+        Err(_) => eprintln!("[debug] release_global_alloc: windows-rs returned Err → C returned NULL (success)"),
+    }
+    // treat the release as done.
+    Ok(handle)
 }
 
 
