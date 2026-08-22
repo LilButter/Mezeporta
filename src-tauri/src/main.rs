@@ -106,6 +106,7 @@ const WINE_PREFIX_MODE_CUSTOM: &str = "custom";
 const WINE_PREFIX_MODE_PROTON: &str = "proton";
 const SERVER_MODE_API: &str = "api";
 const SERVER_MODE_SIGNV1: &str = "signv1";
+const RETURN_TO_LAUNCHER_EXIT_CODE: isize = 102;
 #[cfg(not(windows))]
 const WINE_DLL_OVERRIDES_KEY: &str = r"HKCU\Software\Wine\DllOverrides";
 #[cfg(not(windows))]
@@ -4147,7 +4148,8 @@ async fn auth(
                 })
                 .collect(),
             courses: vec![],
-            patch_server: String::new(),
+            patch_server: cli_resp.patch_server,
+            patch_file_server: cli_resp.patch_file_server,
             alt_savedata_enabled: false,
         }
     } else {
@@ -4182,8 +4184,10 @@ async fn auth(
         )
     };
 
-    // Prefer patchServer from API response when present; otherwise use current endpoint base URL.
-    let patcher_base_url = if auth_resp.patch_server.trim().is_empty() {
+    // SignV1 for manifest, preserve api mode
+    let patcher_base_url = if server_mode == SERVER_MODE_SIGNV1 {
+        auth_resp.patch_server.trim().trim_end_matches('/').to_string()
+    } else if auth_resp.patch_server.trim().is_empty() {
         if is_offline {
             String::new()
         } else {
@@ -4193,8 +4197,6 @@ async fn auth(
         normalize_patcher_base_url(auth_resp.patch_server.trim())
     };
     auth_resp.patch_server = patcher_base_url.clone();
-    // Reuse the selected server ETag as If-None-Match only when
-    // the currently active server matches.
     let local_etag = patcher::cached_server_etag(&game_root, &server_name).unwrap_or_default();
     let etag_for_header: &str = if active_server == server_name {
         &local_etag
@@ -4202,9 +4204,24 @@ async fn auth(
         ""
     };
 
-    // Fetch patch list from patch server (skipped for signv1)
+    // Fetch either manifest (SignV1) or the Wrapper's SHA256 manifest (API).
     let mut raw_patcher_resp: Option<PatcherResponse> = if server_mode == SERVER_MODE_SIGNV1 {
-        None
+        let patch_file_server = auth_resp.patch_file_server.trim();
+        if patcher_base_url.is_empty() || patch_file_server.is_empty() {
+            None
+        } else {
+            let state_sync = state.state_sync.lock().await;
+            server::native_patcher_request(
+                &state.client,
+                state_sync.cancel_shared.clone(),
+                &patcher_base_url,
+                patch_file_server,
+                etag_for_header,
+            )
+            .send()
+            .await
+            .map_err(|e| e.into_frontend())?
+        }
     } else if !patcher_base_url.is_empty() {
         let state_sync = state.state_sync.lock().await;
         server::patcher_request(
@@ -4748,7 +4765,8 @@ async fn create_character(
                 })
                 .collect(),
             courses: vec![],
-            patch_server: String::new(),
+            patch_server: cli_resp.patch_server,
+            patch_file_server: cli_resp.patch_file_server,
             alt_savedata_enabled: false,
         };
 
@@ -5020,7 +5038,7 @@ async fn patcher_start(window: Window, state: tauri::State<'_, TauriState>) -> R
         let mut state_sync = state.state_sync.lock().await;
         state_sync.cancel_shared.cancel();
         state_sync.cancel_shared = CancellationToken::new();
-        let patcher_url = {
+        let fallback_url = {
             let auth_patch = state_sync.auth_resp_err()?.patch_server.clone();
             if auth_patch.trim().is_empty() {
                 normalize_patcher_base_url(&state_sync.current_endpoint.base_url())
@@ -5028,9 +5046,16 @@ async fn patcher_start(window: Window, state: tauri::State<'_, TauriState>) -> R
                 normalize_patcher_base_url(auth_patch.trim())
             }
         };
+        let patcher_resp = state_sync.patcher_resp.take();
+        let patcher_url = patcher_resp
+            .as_ref()
+            .map(|response| response.download_url.trim())
+            .filter(|url| !url.is_empty())
+            .map(ToOwned::to_owned)
+            .unwrap_or(fallback_url);
         (
             patcher_url,
-            state_sync.patcher_resp.take(),
+            patcher_resp,
             state_sync.effective_folder(),
             state_sync.cancel_shared.clone(),
         )
@@ -5242,7 +5267,11 @@ fn main() {
 
     let _single_instance_guard = acquire_single_instance_mutex();
     // Log plugin has an issue where it cannot be initialized twice.
-    let mut log_plugin_initial = None;
+    let mut log_plugin_initial = Some(
+        tauri_plugin_log::Builder::default()
+            .targets(vec![LogTarget::Stdout, LogTarget::Webview])
+            .build(),
+    );
     loop {
         let (config, run, game_root, launcher_prefs_for_launch, app_handle) = {
             let default_endpoints = config::get_default_endpoints();
@@ -5262,15 +5291,6 @@ fn main() {
                 let guard = state_sync.blocking_lock();
                 guard.effective_folder()
             };
-
-            if log_plugin_initial.is_none() {
-                let targets = vec![LogTarget::Stdout, LogTarget::Webview];
-                log_plugin_initial = Some(
-                    tauri_plugin_log::Builder::default()
-                        .targets(targets)
-                        .build(),
-                );
-            }
 
             // initialize the plugin; the Store is opened in `setup`
             let store_plugin = tauri_plugin_store::Builder::default().build();
@@ -5631,6 +5651,10 @@ fn main() {
             ) {
                 Ok(code) => {
                     info!("exited with code {}", code);
+                    if code == RETURN_TO_LAUNCHER_EXIT_CODE {
+                        info!("game requested return to launcher");
+                        continue;
+                    }
                     info!("launcher exiting after game exit");
                     std::process::exit(0);
                 }

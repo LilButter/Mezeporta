@@ -1,16 +1,100 @@
 use crate::mhf::{
-    boxed_zeroed, drop_boxed, gg_proc_addr, init_global_alloc, load_layout_entry,
+    boxed_zeroed, gg_proc_addr, init_global_alloc, load_layout_entry,
     mock_proc_addr, read_graphics_ver, resolve_layout_dll_name, LaunchContext,
     PreparedLayout, INI_BASENAME,
 };
 use crate::utils::bufcopy;
-use crate::{MhfConfig, Result};
+use crate::{Error, MhfConfig, Result};
+use std::io::{Read, Write};
+use std::net::{Ipv4Addr, TcpListener, TcpStream};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 use windows::core::s;
 use windows::Win32::Foundation::{FARPROC, HANDLE, HGLOBAL, HMODULE};
 use windows::Win32::System::WindowsProgramming::{
     GetPrivateProfileIntA, GetPrivateProfileStringA,
 };
 use windows::Win32::UI::TextServices::HKL;
+
+const Z2T_UNIQUE_NAME_RESPONSE: &[u8] =
+    br#"<?xml version="1.0" encoding="ISO-8859-1"?><uniq code="200">OK</uniq>"#;
+
+struct UniqueNameServer {
+    stop: Arc<AtomicBool>,
+    thread: Option<JoinHandle<()>>,
+}
+
+impl UniqueNameServer {
+    fn start() -> Result<(Self, String)> {
+        // Z2TW calls Gameflier's retired character-name HTTP endpoint.
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
+            .map_err(|_| Error::Z2TNameCheck)?;
+        listener
+            .set_nonblocking(true)
+            .map_err(|_| Error::Z2TNameCheck)?;
+        let address = listener
+            .local_addr()
+            .map_err(|_| Error::Z2TNameCheck)?
+            .to_string();
+        let stop = Arc::new(AtomicBool::new(false));
+        let thread_stop = Arc::clone(&stop);
+        let thread = thread::Builder::new()
+            .name("z2t-name-check".to_owned())
+            .spawn(move || {
+                while !thread_stop.load(Ordering::Acquire) {
+                    match listener.accept() {
+                        Ok((stream, _)) => respond_to_name_check(stream),
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                            thread::sleep(Duration::from_millis(10));
+                        }
+                        Err(_) => break,
+                    }
+                }
+            })
+            .map_err(|_| Error::Z2TNameCheck)?;
+
+        Ok((Self {
+            stop,
+            thread: Some(thread),
+        }, address))
+    }
+}
+
+impl Drop for UniqueNameServer {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Release);
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
+fn respond_to_name_check(mut stream: TcpStream) {
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(1)));
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(1)));
+
+    let mut request = [0u8; 2048];
+    let Ok(length) = stream.read(&mut request) else {
+        return;
+    };
+    let request = &request[..length];
+    let valid_request = request.starts_with(b"GET /server/unique.php?")
+        || request.starts_with(b"GET /server/unique.php ");
+    let (status, body): (&str, &[u8]) = if valid_request {
+        ("200 OK", Z2T_UNIQUE_NAME_RESPONSE)
+    } else {
+        ("404 Not Found", b"")
+    };
+    let header = format!(
+        "HTTP/1.0 {status}\r\nContent-Type: text/xml\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        body.len()
+    );
+    let _ = stream.write_all(header.as_bytes());
+    let _ = stream.write_all(body);
+    let _ = stream.flush();
+}
 
 #[derive(Debug)]
 #[repr(C)]
@@ -44,7 +128,8 @@ pub(crate) struct Data {
     fixed_448a64_0x0: u32,
     _pad_448a68: [u8; 0x200],
     remote_addr: [u8; 0x100],
-    remote_host: [u8; 0x100],
+    remote_host: [u8; 0x80],
+    z2t_unique_name_host: [u8; 0x80],
     remote_patch_count: u32,
     server_entrance_count: u32,
     selected_char_status: u32,
@@ -118,7 +203,11 @@ pub(crate) struct Data {
     mutex_master_ready_name: [u8; 0x100],
     _pad_449810: [u8; 0x414],
     mhddl_main: FARPROC,
+    unique_name_server: *mut UniqueNameServer,
 }
+
+const _: [(); 0x1BF0] = [(); std::mem::offset_of!(Data, remote_host)];
+const _: [(); 0x1C70] = [(); std::mem::offset_of!(Data, z2t_unique_name_host)];
 
 fn init_ptrs(data: &mut Box<Data>) {
     data.data_ptr = Box::as_ref(data) as *const _ as usize;
@@ -267,13 +356,26 @@ fn init_data(data: &mut Box<Data>, ctx: &LaunchContext, config: &MhfConfig) {
     bufcopy(&mut data.remote_host, config.server_host.as_bytes());
 }
 
+unsafe fn cleanup_z2t(ptr: *mut usize) {
+    let data = Box::from_raw(ptr as *mut Data);
+    if !data.unique_name_server.is_null() {
+        drop(Box::from_raw(data.unique_name_server));
+    }
+    drop(data);
+}
+
 pub(crate) fn prepare(ctx: &LaunchContext, config: &MhfConfig) -> Result<PreparedLayout> {
     let mut data: Box<Data> = unsafe { boxed_zeroed() };
+    let (unique_name_server, unique_name_address) = UniqueNameServer::start()?;
 
     let graphics_ver = read_graphics_ver(ctx.ini_file);
     let (dll_name, layout_dll_name) = resolve_layout_dll_name(graphics_ver);
 
     init_data(&mut data, ctx, config);
+    bufcopy(
+        &mut data.z2t_unique_name_host,
+        unique_name_address.as_bytes(),
+    );
     data.graphics_ver = graphics_ver;
     bufcopy(
         &mut data.alt_ip_address,
@@ -285,6 +387,7 @@ pub(crate) fn prepare(ctx: &LaunchContext, config: &MhfConfig) -> Result<Prepare
     let (module_handle, mhddl_main, entry_proc) = load_layout_entry(dll_name)?;
     data.mhfo_module = module_handle;
     data.mhddl_main = mhddl_main;
+    data.unique_name_server = Box::into_raw(Box::new(unique_name_server));
     init_ptrs(&mut data);
 
     Ok(PreparedLayout {
@@ -292,6 +395,6 @@ pub(crate) fn prepare(ctx: &LaunchContext, config: &MhfConfig) -> Result<Prepare
         entry_proc,
         mhfo_module: module_handle,
         friend_layout_dll_name: layout_dll_name,
-        cleanup: drop_boxed::<Data>,
+        cleanup: cleanup_z2t,
     })
 }

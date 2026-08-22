@@ -8,8 +8,8 @@ use sha2::Digest;
 use std::{
     collections::BTreeSet,
     fs,
-    io::{self, Write},
-    path::{Path, PathBuf},
+    io::{self, Read, Write},
+    path::{Component, Path, PathBuf},
 };
 use tauri::Window;
 use tokio::select;
@@ -232,37 +232,114 @@ fn parse_queue_position_from_headers(headers: &reqwest::header::HeaderMap) -> us
         .unwrap_or(0)
 }
 
-fn get_changed_paths<'a>(
-    patcher_content: &'a str,
+#[derive(Debug, Clone)]
+struct ChangedPath {
+    target_path: String,
+    source_path: String,
+}
+
+fn normalize_manifest_path(path: &str) -> Result<String, &'static str> {
+    let normalized = path.trim().trim_start_matches('/').replace('\\', "/");
+    let mut parts = Vec::new();
+    for component in Path::new(&normalized).components() {
+        match component {
+            Component::Normal(part) => parts.push(part.to_string_lossy().into_owned()),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(NETWORK_ERROR)
+            }
+        }
+    }
+    if parts.is_empty() {
+        return Err(NETWORK_ERROR);
+    }
+    Ok(parts.join("/"))
+}
+
+fn file_crc32(file: &mut fs::File) -> io::Result<u32> {
+    let mut crc = 0xffff_ffffu32;
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        let count = file.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        for &byte in &buffer[..count] {
+            crc ^= byte as u32;
+            for _ in 0..8 {
+                crc = if crc & 1 != 0 {
+                    (crc >> 1) ^ 0xedb8_8320
+                } else {
+                    crc >> 1
+                };
+            }
+        }
+    }
+    Ok(!crc)
+}
+
+fn checksum_matches(path: &Path, expected: &str) -> bool {
+    let expected = expected.trim();
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+
+    let actual = match expected.len() {
+        8 => file_crc32(&mut file).ok().map(|crc| format!("{:08X}", crc)),
+        64 => {
+            let mut hasher = sha2::Sha256::new();
+            io::copy(&mut file, &mut hasher)
+                .ok()
+                .map(|_| format!("{:x}", hasher.finalize()))
+        }
+        _ => None,
+    };
+
+    actual.is_some_and(|actual| expected.eq_ignore_ascii_case(&actual))
+}
+
+fn get_changed_paths(
+    patcher_content: &str,
     game_folder: &Path,
-) -> Result<Vec<&'a str>, &'static str> {
+) -> Result<Vec<ChangedPath>, &'static str> {
     patcher_content
         .lines()
         .filter_map(|line| {
-            let Some((patcher_hash, mut patcher_path)) = line.split_once('\t') else {
+            let mut fields = line.split('\t');
+            let Some(patcher_hash) = fields.next() else {
                 return Some(Err(NETWORK_ERROR));
             };
-            patcher_path = patcher_path.trim_start_matches('/');
-            let client_path = game_folder.join(patcher_path);
+            let Some(target_path) = fields.next() else {
+                return Some(Err(NETWORK_ERROR));
+            };
+            let source_path = fields.next().unwrap_or(target_path);
+            if fields.next().is_some() {
+                return Some(Err(NETWORK_ERROR));
+            }
+            let target_path = match normalize_manifest_path(target_path) {
+                Ok(path) => path,
+                Err(err) => return Some(Err(err)),
+            };
+            let source_path = match normalize_manifest_path(source_path) {
+                Ok(path) => path,
+                Err(err) => return Some(Err(err)),
+            };
+            let client_path = game_folder.join(&target_path);
 
             info!(
                 "files: {} {} {}",
                 game_folder.display(),
-                &patcher_path,
+                &target_path,
                 client_path.display()
             );
 
-            if let Ok(mut file) = fs::File::open(&client_path) {
-                let mut hasher = sha2::Sha256::new();
-                if io::copy(&mut file, &mut hasher).is_ok() {
-                    let client_hash = format!("{:x}", hasher.finalize());
-                    info!("hashes: {} {}", patcher_hash, client_hash);
-                    if patcher_hash == client_hash {
-                        return None;
-                    }
-                };
-            };
-            Some(Ok(patcher_path))
+            if checksum_matches(&client_path, patcher_hash) {
+                return None;
+            }
+            Some(Ok(ChangedPath {
+                target_path,
+                source_path,
+            }))
         })
         .collect::<Result<Vec<_>, _>>()
         .or(Err(NETWORK_ERROR))
@@ -272,7 +349,7 @@ async fn download_changed_paths(
     window: &Window,
     client: &reqwest::Client,
     patcher_url: &str,
-    changed_paths: &[&str],
+    changed_paths: &[ChangedPath],
     patcher_folder: &Path,
     cancel: CancellationToken,
 ) -> Result<(), &'static str> {
@@ -280,17 +357,20 @@ async fn download_changed_paths(
     let mut current = 0;
     for changed_path in changed_paths {
         let req = client
-            .get(format!("{}/{}", patcher_url, changed_path))
+            .get(format!("{}/{}", patcher_url, changed_path.source_path))
             .send();
         let mut resp = select! {
             _ = cancel.cancelled() => return Ok(()),
             resp = req => resp.or(Err(NETWORK_ERROR))?,
         };
+        if !resp.status().is_success() {
+            return Err(NETWORK_ERROR);
+        }
         let queue_position = parse_queue_position_from_headers(resp.headers());
         if queue_position > 0 {
             send_event(window, total, current, State::Downloading, queue_position);
         }
-        let patcher_path = patcher_folder.join(changed_path);
+        let patcher_path = patcher_folder.join(&changed_path.target_path);
         fs::create_dir_all(patcher_path.parent().ok_or(FILE_ERROR)?).or(Err(FILE_ERROR))?;
         let mut file = fs::OpenOptions::new()
             .write(true)
@@ -311,12 +391,13 @@ async fn download_changed_paths(
 }
 
 fn move_changed_paths(
-    changed_paths: &[&str],
+    changed_paths: &[ChangedPath],
     source_folder: &Path,
     target_folder: &Path,
     manifest: &mut Manifest,
 ) -> Result<(), &'static str> {
-    for rel in changed_paths {
+    for changed_path in changed_paths {
+        let rel = changed_path.target_path.as_str();
         let source = source_folder.join(rel);
         let target = target_folder.join(rel);
 
@@ -431,10 +512,11 @@ fn is_cache_complete_for_server(root: &Path, server: &str, target_has_manifest: 
 fn cache_server_files(
     root: &Path,
     server: &str,
-    changed_paths: &[&str],
+    changed_paths: &[ChangedPath],
 ) -> Result<(), &'static str> {
     let cache_root = server_cache_root(root, server);
-    for rel in changed_paths {
+    for changed_path in changed_paths {
+        let rel = changed_path.target_path.as_str();
         let source = root.join(rel);
         if !source.exists() {
             continue;

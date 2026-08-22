@@ -10,7 +10,9 @@ use crate::friend_injection;
 use crate::utils;
 use crate::{CliFlags, Error, MhfConfig, MhfVersion, Result};
 use windows::core::{s, PCSTR, PCWSTR};
-use windows::Win32::Foundation::{FreeLibrary, FARPROC, HANDLE, HGLOBAL, HMODULE};
+use windows::Win32::Foundation::{
+    FreeLibrary, FARPROC, HANDLE, HGLOBAL, HMODULE, LPARAM, WPARAM,
+};
 use windows::Win32::Graphics::Gdi::{
     AddFontResourceExW, CreateScalableFontResourceW, RemoveFontResourceExW, FR_PRIVATE,
 };
@@ -20,6 +22,9 @@ use windows::Win32::System::Memory::{GlobalLock, GlobalUnlock};
 use windows::Win32::System::WindowsProgramming::GetPrivateProfileIntA;
 use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyboardLayout;
 use windows::Win32::UI::TextServices::HKL;
+use windows::Win32::UI::WindowsAndMessaging::{
+    SendNotifyMessageW, HWND_BROADCAST, WM_FONTCHANGE,
+};
 
 pub(crate) const INI_BASENAME: &[u8] = b"mhf.ini\0";
 pub(crate) type RawEntry = unsafe extern "system" fn() -> isize;
@@ -137,6 +142,25 @@ fn register_font(path: &Path) {
     let wide = path_to_wide_null(path);
     unsafe {
         let _ = AddFontResourceExW(PCWSTR(wide.as_ptr()), FR_PRIVATE, None);
+    }
+}
+
+fn unregister_z2t_game_font(mhf_folder: &Path) {
+    let font_path = mhf_folder.join("dat").join("dft_0.ttc");
+    if !font_path.exists() {
+        return;
+    }
+
+    let wide = path_to_wide_null(&font_path);
+    unsafe {
+        // TW client font release.
+        while RemoveFontResourceExW(PCWSTR(wide.as_ptr()), 0, None).as_bool() {}
+        let _ = SendNotifyMessageW(
+            HWND_BROADCAST,
+            WM_FONTCHANGE,
+            WPARAM(0),
+            LPARAM(0),
+        );
     }
 }
 
@@ -493,6 +517,9 @@ pub fn run_mhf(config: MhfConfig) -> Result<isize> {
     controller_handle.join().map_err(|_| Error::ThreadJoin)?;
 
     unsafe { FreeLibrary(prepared.mhfo_module) }.or(Err(Error::Dll))?;
+    if config.version == MhfVersion::Z2T {
+        unregister_z2t_game_font(&mhf_folder);
+    }
     utils::release_global_alloc(global_alloc)?;
     unsafe { (prepared.cleanup)(prepared.data_ptr) };
 

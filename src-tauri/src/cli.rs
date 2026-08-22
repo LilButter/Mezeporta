@@ -52,7 +52,10 @@ pub struct CliAuthResponse {
     pub mez_fez: Option<CliMezFesData>,
     #[serde(default)]
     pub friends: Vec<CliFriendData>,
+    #[serde(default)]
     pub patch_server: String,
+    #[serde(default)]
+    pub patch_file_server: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -733,7 +736,7 @@ pub fn try_cli_launch() -> bool {
         None,
     ) {
         Ok(code) => {
-            info!("Game exited with code: {}", code);
+            eprintln!("[CLI] Game exited with code: {}", code);
             true
         }
         Err(e) => {

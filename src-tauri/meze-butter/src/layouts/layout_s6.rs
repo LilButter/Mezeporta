@@ -4,12 +4,16 @@ use crate::mhf::{
     PreparedLayout, INI_BASENAME,
 };
 use crate::utils::{bufcopy, create_global_alloc, release_global_alloc};
-use crate::{MhfConfig, Result};
+use crate::{Error, MhfConfig, Result};
+use std::ffi::c_void;
 use windows::core::s;
 use windows::Win32::Foundation::{FARPROC, HANDLE, HGLOBAL, HMODULE};
+use windows::Win32::System::Diagnostics::Debug::FlushInstructionCache;
 use windows::Win32::System::Memory::{
-    VirtualProtect, PAGE_PROTECTION_FLAGS, PAGE_READWRITE,
+    VirtualAlloc, VirtualFree, VirtualProtect, MEM_COMMIT, MEM_RELEASE, MEM_RESERVE,
+    PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS, PAGE_READWRITE,
 };
+use windows::Win32::System::Threading::GetCurrentProcess;
 use windows::Win32::System::WindowsProgramming::{
     GetPrivateProfileIntA, GetPrivateProfileStringA,
 };
@@ -37,6 +41,20 @@ const S6_PROXY_PORT_OFFSET: usize = 0x1E00;
 const S6_SERVER_SEL_OFFSET: usize = 0x1E04;
 const S6_FALLBACK_IP_OFFSET: usize = 0x7B92D0;
 const S6_FALLBACK_IP_LEN: usize = 0x10;
+// S6 embeds two 48 KiB receive slots in its network object. Modern quest lists can exceed
+const S6_RECEIVE_BUFFER_SIZE: usize = 0x20000;
+const S6_RECEIVE_BUFFER_COUNT: usize = 2;
+const S6_RECEIVE_BUFFER_0_INIT_RVA: usize = 0x5DF0C9;
+const S6_RECEIVE_BUFFER_1_INIT_RVA: usize = 0x5DF0D5;
+const S6_RECEIVE_BUFFER_CAPACITY_INIT_RVA: usize = 0x5DF0E1;
+const S6_RECEIVE_BUFFER_0_INIT_BYTES: [u8; 6] = [0x8D, 0x87, 0x50, 0x83, 0x01, 0x00];
+const S6_RECEIVE_BUFFER_1_INIT_BYTES: [u8; 6] = [0x8D, 0x8F, 0x50, 0x43, 0x02, 0x00];
+const S6_RECEIVE_BUFFER_CAPACITY_INIT_BYTES: [u8; 5] = [0xB8, 0x00, 0xC0, 0x00, 0x00];
+const S6_CONSOLE_MESSAGES: [(usize, &[u8]); 3] = [
+    (0x7A7FC8, b"s/r/x = [%d/%d (%d)] byte/second\n"),
+    (0x7A84C0, b"!!!ThPool_man cnt err\n"),
+    (0x7AAAD4, b"set dupl func\n"),
+];
 
 #[derive(Debug)]
 #[repr(C)]
@@ -144,6 +162,7 @@ pub(crate) struct Data {
     mutex_master_ready_name: [u8; 0x100],
     _pad_449810: [u8; 0x414],
     mhddl_main: FARPROC,
+    launcher_receive_buffer_allocation: *mut c_void,
 }
 
 fn init_ptrs(data: &mut Box<Data>) {
@@ -234,6 +253,114 @@ unsafe fn patch_s6_fallback_host(module: HMODULE, host: &[u8]) {
         old_protect,
         &mut restored,
     );
+}
+
+unsafe fn initialize_s6_receive_buffers(module: HMODULE) -> Result<*mut c_void> {
+    if module.0 == 0 {
+        return Err(Error::S6ReceiveBufferSetup);
+    }
+
+    let allocation_size = S6_RECEIVE_BUFFER_SIZE * S6_RECEIVE_BUFFER_COUNT;
+    let allocation = VirtualAlloc(
+        None,
+        allocation_size,
+        MEM_COMMIT | MEM_RESERVE,
+        PAGE_READWRITE,
+    );
+    if allocation.is_null() {
+        return Err(Error::S6ReceiveBufferSetup);
+    }
+
+    let module_base = module.0 as *mut u8;
+    let buffer_0_init = module_base.add(S6_RECEIVE_BUFFER_0_INIT_RVA);
+    let buffer_1_init = module_base.add(S6_RECEIVE_BUFFER_1_INIT_RVA);
+    let capacity_init = module_base.add(S6_RECEIVE_BUFFER_CAPACITY_INIT_RVA);
+
+    let signatures_match = std::slice::from_raw_parts(buffer_0_init, 6)
+        == S6_RECEIVE_BUFFER_0_INIT_BYTES
+        && std::slice::from_raw_parts(buffer_1_init, 6) == S6_RECEIVE_BUFFER_1_INIT_BYTES
+        && std::slice::from_raw_parts(capacity_init, 5) == S6_RECEIVE_BUFFER_CAPACITY_INIT_BYTES;
+    if !signatures_match {
+        let _ = VirtualFree(allocation, 0, MEM_RELEASE);
+        return Err(Error::S6ReceiveBufferSetup);
+    }
+
+    let buffer_0_address = allocation as usize;
+    let buffer_1_address = buffer_0_address + S6_RECEIVE_BUFFER_SIZE;
+    let Ok(buffer_0_address) = u32::try_from(buffer_0_address) else {
+        let _ = VirtualFree(allocation, 0, MEM_RELEASE);
+        return Err(Error::S6ReceiveBufferSetup);
+    };
+    let Ok(buffer_1_address) = u32::try_from(buffer_1_address) else {
+        let _ = VirtualFree(allocation, 0, MEM_RELEASE);
+        return Err(Error::S6ReceiveBufferSetup);
+    };
+
+    let mut old_protect = PAGE_PROTECTION_FLAGS(0);
+    if VirtualProtect(
+        buffer_0_init.cast(),
+        S6_RECEIVE_BUFFER_CAPACITY_INIT_RVA + 5 - S6_RECEIVE_BUFFER_0_INIT_RVA,
+        PAGE_EXECUTE_READWRITE,
+        &mut old_protect,
+    )
+    .is_err()
+    {
+        let _ = VirtualFree(allocation, 0, MEM_RELEASE);
+        return Err(Error::S6ReceiveBufferSetup);
+    }
+
+    let mut buffer_0_patch = [0x90; 6];
+    buffer_0_patch[0] = 0xB8; // mov eax, <buffer 0>
+    buffer_0_patch[1..5].copy_from_slice(&buffer_0_address.to_le_bytes());
+    std::ptr::copy_nonoverlapping(buffer_0_patch.as_ptr(), buffer_0_init, buffer_0_patch.len());
+
+    let mut buffer_1_patch = [0x90; 6];
+    buffer_1_patch[0] = 0xB9; // mov ecx, <buffer 1>
+    buffer_1_patch[1..5].copy_from_slice(&buffer_1_address.to_le_bytes());
+    std::ptr::copy_nonoverlapping(buffer_1_patch.as_ptr(), buffer_1_init, buffer_1_patch.len());
+
+    let capacity_patch = [0xB8, 0x00, 0x00, 0x02, 0x00]; // mov eax, 0x20000
+    std::ptr::copy_nonoverlapping(capacity_patch.as_ptr(), capacity_init, capacity_patch.len());
+
+    let mut restored = PAGE_PROTECTION_FLAGS(0);
+    let patch_len = S6_RECEIVE_BUFFER_CAPACITY_INIT_RVA + 5 - S6_RECEIVE_BUFFER_0_INIT_RVA;
+    let _ = VirtualProtect(buffer_0_init.cast(), patch_len, old_protect, &mut restored);
+    let _ = FlushInstructionCache(
+        GetCurrentProcess(),
+        Some(buffer_0_init.cast_const().cast()),
+        patch_len,
+    );
+
+    Ok(allocation)
+}
+
+unsafe fn configure_s6_console_output(module: HMODULE) -> Result<()> {
+    if module.0 == 0 {
+        return Err(Error::S6ConsoleOutputFiltering);
+    }
+
+    let module_base = module.0 as *mut u8;
+    for (rva, expected) in S6_CONSOLE_MESSAGES {
+        let message = module_base.add(rva);
+        if std::slice::from_raw_parts(message, expected.len()) != expected {
+            return Err(Error::S6ConsoleOutputFiltering);
+        }
+    }
+
+    for (rva, _) in S6_CONSOLE_MESSAGES {
+        let message = module_base.add(rva);
+        let mut old_protect = PAGE_PROTECTION_FLAGS(0);
+        if VirtualProtect(message.cast(), 1, PAGE_READWRITE, &mut old_protect).is_err() {
+            return Err(Error::S6ConsoleOutputFiltering);
+        }
+
+        message.write(0);
+
+        let mut restored = PAGE_PROTECTION_FLAGS(0);
+        let _ = VirtualProtect(message.cast(), 1, old_protect, &mut restored);
+    }
+
+    Ok(())
 }
 
 fn init_data(data: &mut Box<Data>, ctx: &LaunchContext, config: &MhfConfig) -> Result<()> {
@@ -378,6 +505,9 @@ fn init_data(data: &mut Box<Data>, ctx: &LaunchContext, config: &MhfConfig) -> R
 
 unsafe fn cleanup_s6(ptr: *mut usize) {
     let data = Box::from_raw(ptr as *mut Data);
+    if !data.launcher_receive_buffer_allocation.is_null() {
+        let _ = VirtualFree(data.launcher_receive_buffer_allocation, 0, MEM_RELEASE);
+    }
     if !data.season_text_global_alloc.0.is_null() {
         let _ = release_global_alloc(data.season_text_global_alloc);
     }
@@ -402,6 +532,8 @@ pub(crate) fn prepare(ctx: &LaunchContext, config: &MhfConfig) -> Result<Prepare
     data.mhddl_main = mhddl_main;
     unsafe {
         patch_s6_fallback_host(module_handle, config.server_host.as_bytes());
+        configure_s6_console_output(module_handle)?;
+        data.launcher_receive_buffer_allocation = initialize_s6_receive_buffers(module_handle)?;
     }
     init_ptrs(&mut data);
 
@@ -413,5 +545,3 @@ pub(crate) fn prepare(ctx: &LaunchContext, config: &MhfConfig) -> Result<Prepare
         cleanup: cleanup_s6,
     })
 }
-
-

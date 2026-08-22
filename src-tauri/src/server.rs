@@ -216,7 +216,10 @@ pub struct AuthResponse {
     pub friends: Vec<FriendData>,
     #[serde(default)]
     pub courses: Vec<CourseData>,
+    #[serde(default)]
     pub patch_server: String,
+    #[serde(default)]
+    pub patch_file_server: String,
     #[serde(default = "bool_true")]
     pub alt_savedata_enabled: bool,
 }
@@ -230,6 +233,8 @@ pub struct PatcherResponse {
     pub content: String,
     pub server_name: String,
     pub queue_position: usize,
+    #[serde(default)]
+    pub download_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -331,6 +336,9 @@ impl<T: DeserializeOwned> JsonRequest<T> {
 pub struct PatcherRequest {
     request: RequestBuilder,
     cancel: CancellationToken,
+    client_etag: String,
+    download_url: String,
+    native_manifest: bool,
 }
 
 impl PatcherRequest {
@@ -366,23 +374,78 @@ impl PatcherRequest {
             }
         };
 
-        let content = resp.text().await.map_err(|e| {
+        let raw_content = resp.text().await.map_err(|e| {
             warn!("failed to read body of patcher request {}", e);
             Error::Server(status, patcher::NETWORK_ERROR.into())
         })?;
+
+        let content = if self.native_manifest {
+            normalize_native_patch_manifest(&raw_content)?
+        } else {
+            raw_content
+        };
 
         let etag = etag_header.unwrap_or_else(|| {
             warn!("patcher response missing ETag, deriving fallback hash");
             fallback_patcher_etag(&content)
         });
 
+        // unchanged derived hash like a normal 304 response.
+        if !self.client_etag.is_empty() && self.client_etag == etag {
+            return Ok(None);
+        }
+
         Ok(Some(PatcherResponse {
             etag,
             content,
             server_name,
             queue_position,
+            download_url: self.download_url,
         }))
     }
+}
+
+fn normalize_native_patch_manifest(content: &str) -> Result<String, Error> {
+    let mut normalized = String::new();
+
+    for line in content
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+    {
+
+        let fields: Vec<_> = line.splitn(6, ',').collect();
+        if fields.len() != 6 {
+            warn!("invalid native patch manifest line: {}", line);
+            return Err(Error::Backend(patcher::NETWORK_ERROR.into()));
+        }
+
+        let checksum = fields[0].trim();
+        if checksum.len() != 8 || !checksum.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            warn!("invalid native patch checksum: {}", checksum);
+            return Err(Error::Backend(patcher::NETWORK_ERROR.into()));
+        }
+
+        let source = fields[3]
+            .trim()
+            .replace('\\', "/")
+            .trim_start_matches('/')
+            .to_string();
+        let source = source.strip_prefix("mhfdat/").unwrap_or(&source);
+        let target = source.strip_prefix("exe/").unwrap_or(source);
+        if source.is_empty() || target.is_empty() {
+            return Err(Error::Backend(patcher::NETWORK_ERROR.into()));
+        }
+
+        normalized.push_str(checksum);
+        normalized.push('\t');
+        normalized.push_str(target);
+        normalized.push('\t');
+        normalized.push_str(source);
+        normalized.push('\n');
+    }
+
+    Ok(normalized)
 }
 
 fn fallback_patcher_etag(content: &str) -> String {
@@ -506,5 +569,50 @@ pub fn patcher_request(
         request = request.header("If-None-Match", client_etag);
     }
 
-    PatcherRequest { request, cancel }
+    PatcherRequest {
+        request,
+        cancel,
+        client_etag: client_etag.to_string(),
+        download_url: normalized,
+        native_manifest: false,
+    }
+}
+
+pub fn native_patcher_request(
+    client: &reqwest::Client,
+    cancel: CancellationToken,
+    manifest_url: &str,
+    file_url: &str,
+    client_etag: &str,
+) -> PatcherRequest {
+    let manifest_url = manifest_url.trim();
+    let request_url = if manifest_url.contains('?') {
+        if manifest_url
+            .split_once('?')
+            .is_some_and(|(_, query)| query.split('&').any(|key| key.starts_with("key")))
+        {
+            manifest_url.to_string()
+        } else {
+            format!("{}&key", manifest_url)
+        }
+    } else if manifest_url.to_ascii_lowercase().ends_with(".txt")
+        || manifest_url.to_ascii_lowercase().ends_with(".dat")
+    {
+        manifest_url.to_string()
+    } else {
+        format!("{}?key", manifest_url)
+    };
+
+    let mut request = client.get(request_url);
+    if !client_etag.is_empty() {
+        request = request.header("If-None-Match", client_etag);
+    }
+
+    PatcherRequest {
+        request,
+        cancel,
+        client_etag: client_etag.to_string(),
+        download_url: file_url.trim().trim_end_matches('/').to_string(),
+        native_manifest: true,
+    }
 }

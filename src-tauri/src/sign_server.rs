@@ -270,14 +270,6 @@ fn read_pascal_string(cursor: &mut std::io::Cursor<&[u8]>) -> Result<String, Str
     Ok(String::from_utf8_lossy(&bytes).to_string())
 }
 
-fn skip_pascal_string(cursor: &mut std::io::Cursor<&[u8]>) {
-    let slen = read_u8(cursor).unwrap();
-    if slen > 0 {
-        skip_bytes(cursor, (slen as usize).saturating_sub(1)).unwrap();
-        skip_bytes(cursor, 1).unwrap();
-    }
-}
-
 fn read_padded_string(cursor: &mut std::io::Cursor<&[u8]>, width: usize) -> Result<String, String> {
     let bytes = read_bytes(cursor, width)?;
     let len = bytes.iter().position(|&b| b == 0).unwrap_or(width);
@@ -342,10 +334,13 @@ fn parse_sign_response(data: &[u8], game_version: MhfVersion) -> Result<CliAuthR
     let token = String::from_utf8(token_bytes.to_vec()).unwrap_or_default();
     let current_ts = read_u32_be(&mut cursor)?;
 
-    // Skip patch server URLs
+    // patch manifest & file url, preserve wrapper patch for api
+    let mut patch_urls = Vec::with_capacity(_patch_count as usize);
     for _ in 0.._patch_count {
-        skip_pascal_string(&mut cursor);
+        patch_urls.push(read_pascal_string(&mut cursor)?);
     }
+    let patch_server = patch_urls.first().cloned().unwrap_or_default();
+    let patch_file_server = patch_urls.get(1).cloned().unwrap_or_default();
 
     // Read entrance address (consumed for offset, not used by launcher)
     let _entrance_str = read_pascal_string(&mut cursor)?;
@@ -492,7 +487,8 @@ fn parse_sign_response(data: &[u8], game_version: MhfVersion) -> Result<CliAuthR
             stalls,
         }),
         friends,
-        patch_server: String::new(),
+        patch_server,
+        patch_file_server,
     })
 }
 

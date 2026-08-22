@@ -1,16 +1,20 @@
 use crate::mhf::{
-    boxed_zeroed, drop_boxed, gg_proc_addr, init_global_alloc, load_layout_entry,
+    boxed_zeroed, gg_proc_addr, init_global_alloc, load_layout_entry,
     mock_proc_addr, resolve_layout_dll_name, LaunchContext,
     PreparedLayout, INI_BASENAME,
 };
-use crate::utils::bufcopy;
+use crate::utils::{bufcopy, release_global_alloc};
 use crate::{Error, MhfConfig, Result};
+use std::ffi::c_void;
 use windows::core::s;
 use windows::Win32::Foundation::{FARPROC, HANDLE, HGLOBAL, HMODULE};
+use windows::Win32::System::Diagnostics::Debug::FlushInstructionCache;
 use windows::Win32::System::Memory::{
-    GlobalAlloc, GlobalLock, GlobalUnlock, GLOBAL_ALLOC_FLAGS, VirtualProtect,
+    GlobalAlloc, GlobalLock, GlobalUnlock, VirtualAlloc, VirtualFree, VirtualProtect,
+    GLOBAL_ALLOC_FLAGS, MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_EXECUTE_READWRITE,
     PAGE_PROTECTION_FLAGS, PAGE_READWRITE,
 };
+use windows::Win32::System::Threading::GetCurrentProcess;
 use windows::Win32::System::WindowsProgramming::{
     GetPrivateProfileIntA, GetPrivateProfileStringA,
 };
@@ -52,6 +56,20 @@ const S7K_LATE_STATE_BLOCK_LEN: usize = 0x1000;
 const S7K_GAME_GLOBAL_ALLOC_SIZE: usize = 0x20_000;
 const S7K_RUNTIME_TAIL_LEN: usize = 0x9000;
 const S7K_FONT_FAMILY_NAME: &[u8] = b"CreGothic_NHN M\0";
+const S7K_RECEIVE_BUFFER_SIZE: usize = 0x20000;
+const S7K_RECEIVE_BUFFER_COUNT: usize = 2;
+const S7K_RECEIVE_BUFFER_0_INIT_RVA: usize = 0x641849;
+const S7K_RECEIVE_BUFFER_1_INIT_RVA: usize = 0x641855;
+const S7K_RECEIVE_BUFFER_CAPACITY_INIT_RVA: usize = 0x641861;
+const S7K_RECEIVE_BUFFER_0_INIT_BYTES: [u8; 6] = [0x8D, 0x87, 0x50, 0x83, 0x01, 0x00];
+const S7K_RECEIVE_BUFFER_1_INIT_BYTES: [u8; 6] = [0x8D, 0x8F, 0x50, 0x43, 0x02, 0x00];
+const S7K_RECEIVE_BUFFER_CAPACITY_INIT_BYTES: [u8; 5] = [0xB8, 0x00, 0xC0, 0x00, 0x00];
+const S7K_CONSOLE_MESSAGES: [(usize, &[u8]); 4] = [
+    (0x8272A8, b"s/r/x = [%d/%d (%d)] byte/second\n"),
+    (0x827788, b"!!!ThPool_man num err\n"),
+    (0x8277A0, b"!!!ThPool_man cnt err\n"),
+    (0x82A07C, b"set dupl func\n"),
+];
 #[derive(Debug)]
 #[repr(C)]
 pub(crate) struct Data {
@@ -160,6 +178,7 @@ pub(crate) struct Data {
     late_state_2e24: [u8; S7K_LATE_STATE_BLOCK_LEN],
     late_state_ptr_3e24: usize,
     _pad_s7_runtime: [u8; S7K_RUNTIME_TAIL_LEN],
+    launcher_receive_buffer_allocation: *mut c_void,
 }
 
 const _: [(); 0x1D08] = [(); std::mem::offset_of!(Data, state_1d08)];
@@ -293,6 +312,111 @@ unsafe fn patch_s7k_font_bootstrap(module: HMODULE) {
         &[0x90; S7K_FONT_SHUTDOWN_PATCH_LEN],
         S7K_FONT_SHUTDOWN_PATCH_LEN,
     );
+}
+
+unsafe fn initialize_s7k_receive_buffers(module: HMODULE) -> Result<*mut c_void> {
+    if module.0 == 0 {
+        return Err(Error::S7KReceiveBufferSetup);
+    }
+
+    let allocation_size = S7K_RECEIVE_BUFFER_SIZE * S7K_RECEIVE_BUFFER_COUNT;
+    let allocation = VirtualAlloc(
+        None,
+        allocation_size,
+        MEM_COMMIT | MEM_RESERVE,
+        PAGE_READWRITE,
+    );
+    if allocation.is_null() {
+        return Err(Error::S7KReceiveBufferSetup);
+    }
+
+    let module_base = module.0 as *mut u8;
+    let buffer_0_init = module_base.add(S7K_RECEIVE_BUFFER_0_INIT_RVA);
+    let buffer_1_init = module_base.add(S7K_RECEIVE_BUFFER_1_INIT_RVA);
+    let capacity_init = module_base.add(S7K_RECEIVE_BUFFER_CAPACITY_INIT_RVA);
+    let signatures_match = std::slice::from_raw_parts(buffer_0_init, 6)
+        == S7K_RECEIVE_BUFFER_0_INIT_BYTES
+        && std::slice::from_raw_parts(buffer_1_init, 6) == S7K_RECEIVE_BUFFER_1_INIT_BYTES
+        && std::slice::from_raw_parts(capacity_init, 5) == S7K_RECEIVE_BUFFER_CAPACITY_INIT_BYTES;
+    if !signatures_match {
+        let _ = VirtualFree(allocation, 0, MEM_RELEASE);
+        return Err(Error::S7KReceiveBufferSetup);
+    }
+
+    let buffer_0_address = allocation as usize;
+    let buffer_1_address = buffer_0_address + S7K_RECEIVE_BUFFER_SIZE;
+    let Ok(buffer_0_address) = u32::try_from(buffer_0_address) else {
+        let _ = VirtualFree(allocation, 0, MEM_RELEASE);
+        return Err(Error::S7KReceiveBufferSetup);
+    };
+    let Ok(buffer_1_address) = u32::try_from(buffer_1_address) else {
+        let _ = VirtualFree(allocation, 0, MEM_RELEASE);
+        return Err(Error::S7KReceiveBufferSetup);
+    };
+
+    let patch_len = S7K_RECEIVE_BUFFER_CAPACITY_INIT_RVA + 5 - S7K_RECEIVE_BUFFER_0_INIT_RVA;
+    let mut old_protect = PAGE_PROTECTION_FLAGS(0);
+    if VirtualProtect(
+        buffer_0_init.cast(),
+        patch_len,
+        PAGE_EXECUTE_READWRITE,
+        &mut old_protect,
+    )
+    .is_err()
+    {
+        let _ = VirtualFree(allocation, 0, MEM_RELEASE);
+        return Err(Error::S7KReceiveBufferSetup);
+    }
+
+    let mut buffer_0_patch = [0x90; 6];
+    buffer_0_patch[0] = 0xB8; // mov eax, <buffer 0>
+    buffer_0_patch[1..5].copy_from_slice(&buffer_0_address.to_le_bytes());
+    std::ptr::copy_nonoverlapping(buffer_0_patch.as_ptr(), buffer_0_init, buffer_0_patch.len());
+
+    let mut buffer_1_patch = [0x90; 6];
+    buffer_1_patch[0] = 0xB9; // mov ecx, <buffer 1>
+    buffer_1_patch[1..5].copy_from_slice(&buffer_1_address.to_le_bytes());
+    std::ptr::copy_nonoverlapping(buffer_1_patch.as_ptr(), buffer_1_init, buffer_1_patch.len());
+
+    let capacity_patch = [0xB8, 0x00, 0x00, 0x02, 0x00]; // mov eax, 0x20000
+    std::ptr::copy_nonoverlapping(capacity_patch.as_ptr(), capacity_init, capacity_patch.len());
+
+    let mut restored = PAGE_PROTECTION_FLAGS(0);
+    let _ = VirtualProtect(buffer_0_init.cast(), patch_len, old_protect, &mut restored);
+    let _ = FlushInstructionCache(
+        GetCurrentProcess(),
+        Some(buffer_0_init.cast_const().cast()),
+        patch_len,
+    );
+
+    Ok(allocation)
+}
+
+unsafe fn configure_s7k_console_output(module: HMODULE) -> Result<()> {
+    if module.0 == 0 {
+        return Err(Error::S7KConsoleOutputFiltering);
+    }
+
+    let module_base = module.0 as *mut u8;
+    for (rva, expected) in S7K_CONSOLE_MESSAGES {
+        let message = module_base.add(rva);
+        if std::slice::from_raw_parts(message, expected.len()) != expected {
+            return Err(Error::S7KConsoleOutputFiltering);
+        }
+    }
+
+    for (rva, _) in S7K_CONSOLE_MESSAGES {
+        let message = module_base.add(rva);
+        let mut old_protect = PAGE_PROTECTION_FLAGS(0);
+        if VirtualProtect(message.cast(), 1, PAGE_READWRITE, &mut old_protect).is_err() {
+            return Err(Error::S7KConsoleOutputFiltering);
+        }
+        message.write(0);
+        let mut restored = PAGE_PROTECTION_FLAGS(0);
+        let _ = VirtualProtect(message.cast(), 1, old_protect, &mut restored);
+    }
+
+    Ok(())
 }
 fn create_s7k_game_global_alloc() -> Result<HGLOBAL> {
     unsafe { GlobalAlloc(GLOBAL_ALLOC_FLAGS(0x42), S7K_GAME_GLOBAL_ALLOC_SIZE) }
@@ -449,7 +573,14 @@ fn init_data(data: &mut Box<Data>, ctx: &LaunchContext, config: &MhfConfig) -> R
 }
 
 unsafe fn cleanup_s7k(ptr: *mut usize) {
-    drop_boxed::<Data>(ptr);
+    let data = Box::from_raw(ptr as *mut Data);
+    if !data.launcher_receive_buffer_allocation.is_null() {
+        let _ = VirtualFree(data.launcher_receive_buffer_allocation, 0, MEM_RELEASE);
+    }
+    if !data.season_text_global_alloc.0.is_null() {
+        let _ = release_global_alloc(data.season_text_global_alloc);
+    }
+    drop(data);
 }
 
 pub(crate) fn prepare(ctx: &LaunchContext, config: &MhfConfig) -> Result<PreparedLayout> {
@@ -472,6 +603,8 @@ pub(crate) fn prepare(ctx: &LaunchContext, config: &MhfConfig) -> Result<Prepare
     unsafe {
         patch_s7k_fallback_host(module_handle, config.server_host.as_bytes());
         patch_s7k_font_bootstrap(module_handle);
+        configure_s7k_console_output(module_handle)?;
+        data.launcher_receive_buffer_allocation = initialize_s7k_receive_buffers(module_handle)?;
     }
     init_ptrs(&mut data);
 
@@ -483,7 +616,6 @@ pub(crate) fn prepare(ctx: &LaunchContext, config: &MhfConfig) -> Result<Prepare
         cleanup: cleanup_s7k,
     })
 }
-
 
 
 
