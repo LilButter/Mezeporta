@@ -1,8 +1,3 @@
-> [!WARNING]
-> Version S6 & S7K have known issues and will not make it past entrance server.
-
-> Currently investigating sorry for the inconvenience. -LilButter
-
 Mezeporta is a MHF launcher for Erupe community servers supporting 19 versions across all game branches.
 
 ##
