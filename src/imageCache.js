@@ -96,6 +96,8 @@ function canFetchSignature(url) {
     if (parsedUrl.protocol === "data:" || parsedUrl.protocol === "blob:") {
       return false;
     }
+    // Signv1 uses a TCP binary protocol — block all remote HTTP fetches
+    if (parsedUrl.protocol.startsWith("http:")) return false;
     const currentUrl = new URL(window.location.href);
     const isClientImagesPath = parsedUrl.pathname
       .toLowerCase()

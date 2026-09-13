@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { forceRepaint } from "../common";
-import { playSelect } from "../sfx";
+import { playQuickSelect, playSelect } from "../sfx";
 
 const props = defineProps({
   modelValue: {
@@ -94,7 +94,7 @@ function scrollOptionIntoView(event) {
 
 async function openDropdown() {
   if (props.disabled || pickerOpen.value) return;
-  playSelect();
+  playQuickSelect();
   pickerOpen.value = true;
   await focusInitialOption();
 }

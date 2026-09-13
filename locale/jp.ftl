@@ -23,7 +23,9 @@ server-select-error = 「{ $server }」への接続エラー: { $error }
 
 # Server edit
 server-edit-label = サーバーを編集
+server-edit-short-label = 編集
 server-add-label = サーバーを追加
+server-add-short-label = 追加
 server-add-dialog-label = サーバーを追加
 offline-add-server-hint = 開始するにはサーバーを追加または選択してください！
 server-name-label = 名前
@@ -90,6 +92,7 @@ wine-prefix-status-checking-label = Mezeporta プレフィックスを確認中.
 wine-prefix-status-ready-label = Mezeporta プレフィックスの準備完了
 wine-prefix-status-missing-label = Mezeporta プレフィックスが見つかりません
 wine-prefix-status-missing-tools-label = 不足しているランタイムツール
+proton-use-wined3d-label = Proton WineD3D (OpenGL)
 linux-prefix-install-label = ポータブルプレフィックスのインストール
 linux-prefix-install-confirmation = このインストール用にポータブル Mezeporta Wine プレフィックスをセットアップしますか？<br><br><strong>wine</strong>、<strong>wineserver</strong>、<strong>winetricks</strong> を確認し、<strong>Mezeporta/WinePrefix</strong> を作成または再利用して、<strong>wineboot -u</strong> を実行し、<strong>d3dcompiler_47</strong>、<strong>dxvk</strong>、<strong>vcrun2022</strong> をインストールします。R-Analog Patch が有効な場合は、Linux 用コントローラーDLLの上書き設定も適用します。
 linux-prefix-install-progress = このゲームフォルダー用のポータブル Mezeporta Wine プレフィックスをインストール中...
@@ -333,6 +336,7 @@ settings-info-wine-prefix-proton-body = Steam に非 Steam ゲームとして追
 settings-info-wine-prefix-custom-body = 選択した Wine プレフィックスフォルダーを使用します。
 settings-info-wine-prefix-custom-path-body = カスタムプレフィックス選択時に使用するフォルダーです。
 settings-info-wine-prefix-custom-browse-body = 既存の Wine プレフィックスフォルダーを参照します。
+settings-info-proton-use-wined3d-body = PROTON_USE_WINED3D=1 を有効にして、Vulkan（DXVK）の代わりに OpenGL 描画を強制します。Vulkan 非対応の GPU や仮想マシン環境で有効です。
 settings-info-reset-patch-body = アクティブサーバーのパッチ済みファイルを元のゲーム状態に戻します。
 settings-session-lock-tooltip = 調整するにはログアウトしてください
 controller-vibration-label = 振動

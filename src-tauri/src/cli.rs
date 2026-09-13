@@ -423,6 +423,7 @@ fn build_cli_launch_config(
 fn resolve_launcher_font_path(game_root: &Path, version: mhf_iel::MhfVersion) -> Option<PathBuf> {
     let font_name = match version {
         mhf_iel::MhfVersion::Z2T => "dft_0.ttc",
+        mhf_iel::MhfVersion::S7K => "CreGothic_NHN M.ttf",
         _ => "MS Gothic.ttf",
     };
 
@@ -434,6 +435,11 @@ fn resolve_launcher_font_path(game_root: &Path, version: mhf_iel::MhfVersion) ->
     let fallback = game_root.join("fonts").join(font_name);
     if fallback.exists() {
         return Some(fallback);
+    }
+
+    let dat = game_root.join("dat").join(font_name);
+    if dat.exists() {
+        return Some(dat);
     }
 
     None

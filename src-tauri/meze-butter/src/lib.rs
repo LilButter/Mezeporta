@@ -194,6 +194,23 @@ pub struct MhfConfig {
     pub mhf_flags: Option<Vec<CliFlags>>,
 }
 
+const BASE32_CAP: u32 = 0x4000_0000;
+const BASE32_CHARS: &[u8; 32] = b"123456789ABCDEFGHJKLMNPQRTUVWXYZ";
+
+#[inline]
+pub fn make_ext_id(mut id: u32) -> String {
+    debug_assert!(id < BASE32_CAP, "ext_id overflow: {}", id);
+    let mut out = [b'1'; 6];
+    for byte in &mut out {
+        *byte = BASE32_CHARS[(id % 32) as usize];
+        id /= 32;
+        if id == 0 {
+            break;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 pub fn available_friend_signatures(version: MhfVersion, hd: bool) -> Vec<String> {
     const EMPTY: &[&str] = &[];
     const S6: &[&str] = &["v1.13.3246"];
@@ -242,25 +259,7 @@ pub fn available_friend_signatures(version: MhfVersion, hd: bool) -> Vec<String>
         MhfVersion::ZZ => if hd { ZZ_HD } else { ZZ_SD },
         MhfVersion::G5 | MhfVersion::Z2 | MhfVersion::Z2T => EMPTY,
     };
-
     sigs.iter().map(|s| (*s).to_string()).collect()
-}
-
-const BASE32_CHARS: &[u8; 32] = b"123456789ABCDEFGHJKLMNPQRTUVWXYZ";
-const BASE32_CAP: u32 = 32u32.pow(6);
-
-#[inline]
-pub fn make_ext_id(mut id: u32) -> String {
-    debug_assert!(id < BASE32_CAP, "ext_id overflow: {}", id);
-    let mut out = [b'1'; 6];
-    for byte in &mut out {
-        *byte = BASE32_CHARS[(id % 32) as usize];
-        id /= 32;
-        if id == 0 {
-            break;
-        }
-    }
-    String::from_utf8_lossy(&out).into_owned()
 }
 
 pub fn run(config: MhfConfig) -> Result<isize> {

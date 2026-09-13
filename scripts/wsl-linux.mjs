@@ -127,7 +127,8 @@ function wslGraphicsEnvPrefix() {
 }
 
 function windowsPathToWslPath(windowsPath) {
-  const result = runWsl(["wslpath", "-a", windowsPath]);
+  const normalized = String(windowsPath ?? "").replace(/\\/g, "/");
+  const result = runWsl(["wslpath", "-a", normalized]);
   if (result.error) {
     throw result.error;
   }

@@ -1987,6 +1987,8 @@
 
 .ps4-server-option-main,
 .ps4-server-option-add {
+    display: flex;
+    align-items: center;
     padding: 0 12px;
     text-align: left;
     min-width: 0;
@@ -2010,6 +2012,106 @@
     align-items: center;
     justify-content: center;
     border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ps4-server-actions-row {
+    display: flex !important;
+    align-items: center;
+    width: 100%;
+}
+
+.ps4-server-action-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 34px;
+    background: transparent;
+    color: #e7eee8;
+    border: 0;
+    padding: 0 4px !important;
+    text-align: center !important;
+    min-width: 0;
+    flex: 1 1 50%;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: flex 0.22s cubic-bezier(0.2, 0, 0, 1), background 0.12s ease, color 0.12s ease;
+}
+
+.ps4-server-action-btn::before {
+    display: none !important;
+}
+
+.ps4-server-action-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.ps4-server-action-btn.ps4-server-action-edit {
+    border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.ps4-server-action-btn.ps4-server-action-solo {
+    flex: 1 1 100% !important;
+    border-right: 0 !important;
+}
+
+/* Label visibility: default is short label, full label hidden */
+.ps4-server-action-btn .ps4-action-full {
+    display: none;
+}
+.ps4-server-action-btn .ps4-action-short {
+    display: inline;
+}
+
+/* Solo button always shows full label */
+.ps4-server-action-btn.ps4-server-action-solo .ps4-action-full {
+    display: inline;
+}
+.ps4-server-action-btn.ps4-server-action-solo .ps4-action-short {
+    display: none;
+}
+
+/* Hover / focus on Edit: expand Edit, push Add, show Edit Server */
+.ps4-server-action-edit:hover:not(.ps4-server-action-solo),
+.ps4-server-action-edit.controller-nav-focused:not(.ps4-server-action-solo),
+.ps4-server-action-edit:focus-visible:not(.ps4-server-action-solo) {
+    flex: 2.3 1 70%;
+}
+.ps4-server-action-edit:hover:not(.ps4-server-action-solo) .ps4-action-full,
+.ps4-server-action-edit.controller-nav-focused:not(.ps4-server-action-solo) .ps4-action-full,
+.ps4-server-action-edit:focus-visible:not(.ps4-server-action-solo) .ps4-action-full {
+    display: inline;
+}
+.ps4-server-action-edit:hover:not(.ps4-server-action-solo) .ps4-action-short,
+.ps4-server-action-edit.controller-nav-focused:not(.ps4-server-action-solo) .ps4-action-short,
+.ps4-server-action-edit:focus-visible:not(.ps4-server-action-solo) .ps4-action-short {
+    display: none;
+}
+.ps4-server-actions-row:has(.ps4-server-action-edit:hover) .ps4-server-action-add,
+.ps4-server-actions-row:has(.ps4-server-action-edit.controller-nav-focused) .ps4-server-action-add,
+.ps4-server-actions-row:has(.ps4-server-action-edit:focus-visible) .ps4-server-action-add {
+    flex: 0.7 1 30%;
+}
+
+/* Hover / focus on Add: expand Add, push Edit, show Add Server */
+.ps4-server-action-add:hover:not(.ps4-server-action-solo),
+.ps4-server-action-add.controller-nav-focused:not(.ps4-server-action-solo),
+.ps4-server-action-add:focus-visible:not(.ps4-server-action-solo) {
+    flex: 2.3 1 70%;
+}
+.ps4-server-action-add:hover:not(.ps4-server-action-solo) .ps4-action-full,
+.ps4-server-action-add.controller-nav-focused:not(.ps4-server-action-solo) .ps4-action-full,
+.ps4-server-action-add:focus-visible:not(.ps4-server-action-solo) .ps4-action-full {
+    display: inline;
+}
+.ps4-server-action-add:hover:not(.ps4-server-action-solo) .ps4-action-short,
+.ps4-server-action-add.controller-nav-focused:not(.ps4-server-action-solo) .ps4-action-short,
+.ps4-server-action-add:focus-visible:not(.ps4-server-action-solo) .ps4-action-short {
+    display: none;
+}
+.ps4-server-actions-row:has(.ps4-server-action-add:hover) .ps4-server-action-edit,
+.ps4-server-actions-row:has(.ps4-server-action-add.controller-nav-focused) .ps4-server-action-edit,
+.ps4-server-actions-row:has(.ps4-server-action-add:focus-visible) .ps4-server-action-edit {
+    flex: 0.7 1 30%;
 }
 
 .ps4-login-actions {
@@ -2463,4 +2565,52 @@
     margin-bottom: -4px;
     text-align: center;
     transform: translateY(-10px);
+}
+
+/* Server Dialog Mode Selector */
+.server-mode-selector {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 0.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(0, 0, 0, 0.5);
+    gap: 4px;
+}
+
+.server-mode-btn {
+    font-family: inherit !important;
+    border-radius: 0.25rem !important;
+    padding: 0.25rem 1rem !important;
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    color: rgba(209, 192, 165, 0.5) !important;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.server-mode-btn:hover:not(:disabled) {
+    color: #EFDDC2 !important;
+    background-color: #1b1b1b99 !important;
+}
+
+.server-mode-btn.active {
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #d1c0a5 !important;
+    font-weight: 500;
+    background-color: #00000099 !important;
+    box-shadow: none !important;
+}
+
+.server-mode-btn.active:hover {
+    color: #EFDDC2 !important;
+    background-color: #1b1b1b99 !important;
+}
+
+.server-mode-btn.controller-nav-focused {
+    outline: none !important;
+    border-color: var(--controller-focus-color) !important;
+    box-shadow: 0 0 0 1px var(--controller-focus-color), var(--controller-focus-glow) !important;
 }

@@ -44,7 +44,7 @@ checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
 
 [[package]]
 name = "meze-butter"
-version = "1.5.2"
+version = "1.5.4"
 dependencies = [
  "base64",
  "num_enum",

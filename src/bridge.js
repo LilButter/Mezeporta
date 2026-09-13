@@ -33,6 +33,7 @@ const DEFAULT_STATE = {
     friendSignature: "none",
     winePrefixMode: "portable",
     winePrefixCustomPath: null,
+    protonUseWined3d: false,
   },
   uiPrefs: {
     sfxEnabled: false,
@@ -79,6 +80,9 @@ function normalizeLauncherPrefs(prefs = {}) {
     ),
     winePrefixCustomPath: normalizeWinePrefixCustomPath(
       prefs?.winePrefixCustomPath ?? DEFAULT_STATE.launcherPrefs.winePrefixCustomPath
+    ),
+    protonUseWined3d: Boolean(
+      prefs?.protonUseWined3d ?? DEFAULT_STATE.launcherPrefs.protonUseWined3d
     ),
   };
 }
@@ -316,6 +320,10 @@ async function localInvoke(cmd, args = {}) {
             payload?.winePrefixCustomPath === undefined
               ? state.launcherPrefs?.winePrefixCustomPath
               : payload?.winePrefixCustomPath,
+          protonUseWined3d:
+            payload?.protonUseWined3d === undefined
+              ? state.launcherPrefs?.protonUseWined3d
+              : payload?.protonUseWined3d,
         }),
       };
       saveLocalState(state);

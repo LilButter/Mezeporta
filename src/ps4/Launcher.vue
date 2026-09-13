@@ -1873,11 +1873,23 @@ watch(
 
 const srvFocused = { name: false, url: false, lport: false, gport: false };
 
+function dialogSetServerMode(mode) {
+  if (storeMut.editEndpoint.isRemote) return;
+  const prevMode = storeMut.editEndpoint.serverMode;
+  if (prevMode === mode) return;
+  storeMut.editEndpoint.serverMode = mode;
+  if (
+    !storeMut.editEndpoint.launcherPort ||
+    storeMut.editEndpoint.launcherPort === (prevMode === "signv1" ? 53312 : 8080)
+  ) {
+    storeMut.editEndpoint.launcherPort = null;
+  }
+  setLauncherPrefs({ serverMode: mode });
+}
+
 function dialogToggleServerMode() {
   const isSignV1 = storeMut.editEndpoint.serverMode === "signv1";
-  const next = isSignV1 ? "api" : "signv1";
-  storeMut.editEndpoint.serverMode = next;
-  setLauncherPrefs({ serverMode: next });
+  dialogSetServerMode(isSignV1 ? "api" : "signv1");
 }
 
 function syncServerDialogNameDownNode(key) {
@@ -2656,12 +2668,12 @@ watch(
               class="box-text col-span-2 text-white"
               spellcheck="false"
               ref="srvLportEl"
-              placeholder="8080"
+              :placeholder="storeMut.editEndpoint.serverMode === 'signv1' ? '53312' : '8080'"
               :data-controller-node="store.editEndpointNew ? 'server-dialog-launcher-port' : null"
               :data-controller-up="store.editEndpointNew ? 'server-dialog-name' : null"
               :data-controller-left="store.editEndpointNew ? 'server-dialog-host' : null"
               :data-controller-right="store.editEndpointNew ? 'server-dialog-game-port' : null"
-              :data-controller-down="store.editEndpointNew ? 'server-dialog-add' : null"
+              :data-controller-down="store.editEndpointNew ? 'server-dialog-mode-api' : null"
               :data-controller-focus-mode="store.editEndpointNew ? 'manual' : null"
               :class="{ disabled: storeMut.editEndpoint.isRemote }"
               :disabled="storeMut.editEndpoint.isRemote"
@@ -2680,7 +2692,7 @@ watch(
               :data-controller-node="store.editEndpointNew ? 'server-dialog-game-port' : null"
               :data-controller-up="store.editEndpointNew ? 'server-dialog-name' : null"
               :data-controller-left="store.editEndpointNew ? 'server-dialog-launcher-port' : null"
-              :data-controller-down="store.editEndpointNew ? 'server-dialog-add' : null"
+              :data-controller-down="store.editEndpointNew ? 'server-dialog-mode-signv1' : null"
               :data-controller-focus-mode="store.editEndpointNew ? 'manual' : null"
               :class="{ disabled: storeMut.editEndpoint.isRemote }"
               :disabled="storeMut.editEndpoint.isRemote"
@@ -2689,14 +2701,40 @@ watch(
               @controller-nav-focus="onSrvControllerNavFocus('gport')"
               @keydown="srvTypeSfx"
             />
-            <div class="col-span-7 flex items-center justify-center gap-3 mt-1">
-              <span class="text-[14px] leading-tight news-default">{{ $t('api-label', 'API') }}</span>
-              <label class="relative inline-flex items-center cursor-pointer" @click.stop.prevent="playSelect(); dialogToggleServerMode()">
-                <input type="checkbox" class="sr-only peer" :checked="storeMut.editEndpoint.serverMode === 'signv1'" :disabled="storeMut.editEndpoint.isRemote" />
-                <div class="w-12 h-7 rounded-full bg-black/50 border transition-colors" :style="{ borderColor: 'var(--controller-active-color)' }"></div>
-                <div class="absolute left-[3px] top-[3px] w-5 h-5 rounded-full bg-[#f5f5f5] shadow transition-transform transition-colors peer-checked:translate-x-5" :style="storeMut.editEndpoint.serverMode === 'signv1' ? { backgroundColor: 'var(--controller-active-color)' } : null"></div>
-              </label>
-              <span class="text-[14px] leading-tight news-default">{{ $t('signv1-label', 'SignV1') }}</span>
+            <div class="col-span-7 flex items-center justify-center mt-2">
+              <div
+                class="server-mode-selector"
+                :class="{ disabled: storeMut.editEndpoint.isRemote }"
+              >
+                <button
+                  type="button"
+                  class="server-mode-btn"
+                  :class="{ active: storeMut.editEndpoint.serverMode !== 'signv1' }"
+                  :data-controller-node="store.editEndpointNew ? 'server-dialog-mode-api' : null"
+                  :data-controller-up="store.editEndpointNew ? 'server-dialog-launcher-port' : null"
+                  :data-controller-right="store.editEndpointNew ? 'server-dialog-mode-signv1' : null"
+                  :data-controller-down="store.editEndpointNew ? 'server-dialog-cancel' : null"
+                  :disabled="storeMut.editEndpoint.isRemote"
+                  @mouseenter="playHover()"
+                  @click.prevent="playSelect(); dialogSetServerMode('api')"
+                >
+                  {{ $t('api-label', 'API') }}
+                </button>
+                <button
+                  type="button"
+                  class="server-mode-btn"
+                  :class="{ active: storeMut.editEndpoint.serverMode === 'signv1' }"
+                  :data-controller-node="store.editEndpointNew ? 'server-dialog-mode-signv1' : null"
+                  :data-controller-up="store.editEndpointNew ? 'server-dialog-game-port' : null"
+                  :data-controller-left="store.editEndpointNew ? 'server-dialog-mode-api' : null"
+                  :data-controller-down="store.editEndpointNew ? 'server-dialog-add' : null"
+                  :disabled="storeMut.editEndpoint.isRemote"
+                  @mouseenter="playHover()"
+                  @click.prevent="playSelect(); dialogSetServerMode('signv1')"
+                >
+                  {{ $t('signv1-label', 'SignV1') }}
+                </button>
+              </div>
             </div>
           </div>
         </template>
@@ -2762,7 +2800,7 @@ watch(
             <button
               class="box-text box-lg box-btn"
               :data-controller-node="store.dialogKind === SERVERS_DIALOG && store.editEndpointNew ? 'server-dialog-cancel' : null"
-              :data-controller-up="store.dialogKind === SERVERS_DIALOG && store.editEndpointNew ? 'server-dialog-host' : null"
+              :data-controller-up="store.dialogKind === SERVERS_DIALOG && store.editEndpointNew ? 'server-dialog-mode-api' : null"
               :data-controller-right="store.dialogKind === SERVERS_DIALOG && store.editEndpointNew ? 'server-dialog-add' : null"
               @mouseenter="playHover()"
               @click="playSelect();"
@@ -2777,7 +2815,7 @@ watch(
             <button
               class="box-text box-lg box-btn"
               :data-controller-node="store.dialogKind === SERVERS_DIALOG && store.editEndpointNew ? 'server-dialog-add' : null"
-              :data-controller-up="store.dialogKind === SERVERS_DIALOG && store.editEndpointNew ? 'server-dialog-game-port' : null"
+              :data-controller-up="store.dialogKind === SERVERS_DIALOG && store.editEndpointNew ? 'server-dialog-mode-signv1' : null"
               :data-controller-left="store.dialogKind === SERVERS_DIALOG && store.editEndpointNew ? 'server-dialog-cancel' : null"
               @mouseenter="playHover()"
               @click="playConfirm();"

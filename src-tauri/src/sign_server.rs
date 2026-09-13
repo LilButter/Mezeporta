@@ -334,7 +334,6 @@ fn parse_sign_response(data: &[u8], game_version: MhfVersion) -> Result<CliAuthR
     let token = String::from_utf8(token_bytes.to_vec()).unwrap_or_default();
     let current_ts = read_u32_be(&mut cursor)?;
 
-    // patch manifest & file url, preserve wrapper patch for api
     let mut patch_urls = Vec::with_capacity(_patch_count as usize);
     for _ in 0.._patch_count {
         patch_urls.push(read_pascal_string(&mut cursor)?);
@@ -438,33 +437,53 @@ fn parse_sign_response(data: &[u8], game_version: MhfVersion) -> Result<CliAuthR
     cursor.set_position(filter_end);
 
     // Skip everything between filters and mezFes (caplink, PSN, etc.)
-    // mezFes is always at the end: expiry_ts + extra_zero + event_id + start + end + ticket_count + tickets + stall_count + stalls = 38 bytes
-    let mez_fes_offset = data.len() as u64 - 38;
-    cursor.set_position(mez_fes_offset);
+    // In modern Erupe, mezFes is at the end: expiry_ts + extra_zero + event_id + start + end + ticket_count + tickets + stall_count + stalls = 38 bytes
+    let mut expiry_ts = 0u32;
+    let mut mez_fes: Option<CliMezFesData> = None;
 
-    // expiry_ts and extra_zero
-    let expiry_ts = read_u32_be(&mut cursor)?;
-    let _extra_zero: u32 = read_u32_be(&mut cursor)?;
+    if data.len() >= 38 {
+        let mez_fes_offset = data.len() as u64 - 38;
+        if mez_fes_offset >= filter_end {
+            cursor.set_position(mez_fes_offset);
+            if let Ok(exp) = read_u32_be(&mut cursor) {
+                expiry_ts = exp;
+                let _ = read_u32_be(&mut cursor); // extra_zero
 
-    // mezFes
-    let mez_event_id = read_u32_be(&mut cursor)?;
-    let mez_start = read_u32_be(&mut cursor)?;
-    let mez_end = read_u32_be(&mut cursor)?;
-    let ticket_count: u8 = read_u8(&mut cursor)?;
-    let mut solo_tickets = 0u32;
-    let mut group_tickets = 0u32;
-    for i in 0..ticket_count {
-        let val = read_u32_be(&mut cursor)?;
-        if i == 0 {
-            solo_tickets = val;
-        } else if i == 1 {
-            group_tickets = val;
+                if let (Ok(mez_event_id), Ok(mez_start), Ok(mez_end), Ok(ticket_count)) = (
+                    read_u32_be(&mut cursor),
+                    read_u32_be(&mut cursor),
+                    read_u32_be(&mut cursor),
+                    read_u8(&mut cursor),
+                ) {
+                    let mut solo_tickets = 0u32;
+                    let mut group_tickets = 0u32;
+                    for i in 0..ticket_count {
+                        if let Ok(val) = read_u32_be(&mut cursor) {
+                            if i == 0 {
+                                solo_tickets = val;
+                            } else if i == 1 {
+                                group_tickets = val;
+                            }
+                        }
+                    }
+                    let stall_count = read_u8(&mut cursor).unwrap_or(0);
+                    let mut stalls = Vec::new();
+                    for _ in 0..stall_count {
+                        if let Ok(s) = read_u8(&mut cursor) {
+                            stalls.push(s as u32);
+                        }
+                    }
+                    mez_fes = Some(CliMezFesData {
+                        id: mez_event_id,
+                        start: mez_start,
+                        end: mez_end,
+                        solo_tickets,
+                        group_tickets,
+                        stalls,
+                    });
+                }
+            }
         }
-    }
-    let _stall_count: u8 = read_u8(&mut cursor)?;
-    let mut stalls = Vec::new();
-    for _ in 0.._stall_count {
-        stalls.push(read_u8(&mut cursor)? as u32);
     }
 
     Ok(CliAuthResponse {
@@ -478,14 +497,7 @@ fn parse_sign_response(data: &[u8], game_version: MhfVersion) -> Result<CliAuthR
             rights,
         },
         characters,
-        mez_fez: Some(CliMezFesData {
-            id: mez_event_id,
-            start: mez_start,
-            end: mez_end,
-            solo_tickets,
-            group_tickets,
-            stalls,
-        }),
+        mez_fez: mez_fes,
         friends,
         patch_server,
         patch_file_server,
@@ -516,7 +528,7 @@ fn sign_auth_inner(
     let mut send_key_rot: u32 = 995117;
     let mut read_key_rot: u32 = 995117;
 
-    let req_type = "DSGN:041";
+    let req_type = "DSGN:100";
     let user_sjis = if append_plus {
         encode_sjis(&format!("{}+", username))
     } else {

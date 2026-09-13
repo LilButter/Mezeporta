@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { assetUrl, store } from "../store";
-import { playHover, playSelect } from "../sfx";
+import { playHover, playPage, playSelect } from "../sfx";
 import { getItemDisplayMeta } from "../altclient/savedataView";
 import renamedItemsRaw from "../../renamed_items.txt?raw";
 
@@ -475,7 +475,7 @@ function goTo(direction) {
   const targetIndex = currentIndex.value + offset;
   if (targetIndex < 0 || targetIndex >= totalEntries.value) return;
 
-  playSelect();
+  playPage();
   clearPageTurnTimer();
   turnState.value = {
     direction,

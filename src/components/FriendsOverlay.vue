@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { assetUrl, store } from "../store";
-import { playHover, playSelect } from "../sfx";
+import { playHover, playPage, playSelect } from "../sfx";
 import { getCid } from "../common";
 
 const props = defineProps({
@@ -143,7 +143,7 @@ function statusTitle(friend) {
 function goToPage(delta) {
   const nextPage = pageIndex.value + delta;
   if (nextPage < 0 || nextPage >= totalBookPages.value) return;
-  playSelect();
+  playPage();
   pageIndex.value = nextPage;
 }
 

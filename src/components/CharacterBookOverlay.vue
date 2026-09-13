@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { assetUrl, store } from "../store";
-import { playHover, playSelect } from "../sfx";
+import { playHover, playPage, playSelect } from "../sfx";
 
 const props = defineProps({
   open: {
@@ -541,7 +541,7 @@ function showBookInfoPage(page) {
   const pages = bookInfoPages.value;
   if (!pages.includes(page)) return;
   clearBookInfoAnimationTimer();
-  playSelect();
+  playPage();
   const previousIndex = pages.indexOf(bookInfoPage.value);
   const nextIndex = pages.indexOf(page);
   bookInfoTurnDirection.value = nextIndex > previousIndex ? "next" : "prev";

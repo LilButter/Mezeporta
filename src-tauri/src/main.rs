@@ -517,6 +517,11 @@ fn migrate_config_store(store: &mut tauri_plugin_store::Store<tauri::Wry>) -> bo
             }
         }
 
+        if !obj.contains_key("protonUseWined3d") {
+            obj.insert("protonUseWined3d".to_string(), Value::Bool(false));
+            touched = true;
+        }
+
         touched
     });
 
@@ -1080,6 +1085,7 @@ fn install_ps4_aspect_lock(_window: &Window) {}
 fn resolve_launcher_font_path(game_root: &Path, version: mhf_iel::MhfVersion) -> Option<PathBuf> {
     let font_name = match version {
         mhf_iel::MhfVersion::Z2T => "dft_0.ttc",
+        mhf_iel::MhfVersion::S7K => "CreGothic_NHN M.ttf",
         _ => "MS Gothic.ttf",
     };
 
@@ -1091,6 +1097,11 @@ fn resolve_launcher_font_path(game_root: &Path, version: mhf_iel::MhfVersion) ->
     let fallback = game_root.join("fonts").join(font_name);
     if fallback.exists() {
         return Some(fallback);
+    }
+
+    let dat = game_root.join("dat").join(font_name);
+    if dat.exists() {
+        return Some(dat);
     }
 
     None
@@ -1179,7 +1190,8 @@ pub(crate) fn ensure_mezeporta_support_dirs(game_root: &Path) -> Result<(), Stri
     {
         let bin_dir = mezeporta_root.join("bin");
         let wine_prefix_dir = game_root.join(WINE_PREFIX_DIR);
-        for dir in [&bin_dir, &wine_prefix_dir] {
+        let proton_data_dir = mezeporta_root.join("ProtonData");
+        for dir in [&bin_dir, &wine_prefix_dir, &proton_data_dir] {
             ensure_dir(dir)?;
         }
     }
@@ -1498,18 +1510,104 @@ fn resolve_wine_command() -> PathBuf {
 }
 
 #[cfg(not(windows))]
+fn resolve_steam_client_path() -> Option<PathBuf> {
+    if let Ok(val) = std::env::var("STEAM_COMPAT_CLIENT_INSTALL_PATH") {
+        let trimmed = val.trim();
+        if !trimmed.is_empty() {
+            let p = PathBuf::from(trimmed);
+            if p.exists() {
+                return Some(p);
+            }
+        }
+    }
+
+    let home = std::env::var_os("HOME").map(PathBuf::from)?;
+    let candidates = [
+        home.join(".steam").join("steam"),
+        home.join(".steam").join("root"),
+        home.join(".local").join("share").join("Steam"),
+        home.join(".var").join("app").join("com.valvesoftware.Steam").join("data").join("Steam"),
+        home.join(".var").join("app").join("com.valvesoftware.Steam").join(".steam").join("steam"),
+    ];
+
+    for c in candidates {
+        if c.is_dir() {
+            return Some(c);
+        }
+    }
+
+    Some(home.join(".steam").join("steam"))
+}
+
+#[cfg(not(windows))]
 fn resolve_proton_command() -> PathBuf {
-    PathBuf::from(
-        std::env::var("MEZEPORTA_PROTON_CMD")
-            .ok()
-            .filter(|value| !value.trim().is_empty())
-            .or_else(|| {
-                std::env::var("PROTON_CMD")
-                    .ok()
-                    .filter(|value| !value.trim().is_empty())
-            })
-            .unwrap_or_else(|| "proton".to_string()),
-    )
+    if let Ok(val) = std::env::var("MEZEPORTA_PROTON_CMD") {
+        let trimmed = val.trim();
+        if !trimmed.is_empty() {
+            return PathBuf::from(trimmed);
+        }
+    }
+    if let Ok(val) = std::env::var("PROTON_CMD") {
+        let trimmed = val.trim();
+        if !trimmed.is_empty() {
+            return PathBuf::from(trimmed);
+        }
+    }
+
+    if command_exists(Path::new("proton")) {
+        return PathBuf::from("proton");
+    }
+
+    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+        let steam_roots = [
+            home.join(".steam").join("steam").join("steamapps").join("common"),
+            home.join(".local").join("share").join("Steam").join("steamapps").join("common"),
+            home.join(".steam").join("root").join("compatibilitytools.d"),
+            home.join(".steam").join("steam").join("compatibilitytools.d"),
+            home.join(".local").join("share").join("Steam").join("compatibilitytools.d"),
+            home.join(".var").join("app").join("com.valvesoftware.Steam").join("data").join("Steam").join("steamapps").join("common"),
+            home.join(".var").join("app").join("com.valvesoftware.Steam").join("data").join("Steam").join("compatibilitytools.d"),
+        ];
+
+        let mut found: Vec<PathBuf> = Vec::new();
+        for root in steam_roots {
+            if let Ok(entries) = fs::read_dir(root) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.to_ascii_lowercase().contains("proton") {
+                        let binary = p.join("proton");
+                        if binary.is_file() {
+                            found.push(binary);
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(best) = found.into_iter().max_by_key(|p| {
+            let s = p.to_string_lossy().to_string();
+            let mut score: u32 = 0;
+            if s.contains("Experimental") {
+                score += 100;
+            } else if s.contains("GE-Proton") {
+                score += 90;
+            } else if s.contains("Proton 9") {
+                score += 80;
+            } else if s.contains("Proton 8") {
+                score += 70;
+            } else if s.contains("Proton 7") {
+                score += 60;
+            } else {
+                score += 10;
+            }
+            score
+        }) {
+            return best;
+        }
+    }
+
+    PathBuf::from("proton")
 }
 
 #[cfg(not(windows))]
@@ -1535,7 +1633,10 @@ fn resolve_wine_prefix(
 ) -> Result<Option<PathBuf>, String> {
     match normalize_wine_prefix_mode(&launcher_prefs.wine_prefix_mode).as_str() {
         WINE_PREFIX_MODE_SYSTEM => Ok(None),
-        WINE_PREFIX_MODE_PROTON => Ok(None),
+        WINE_PREFIX_MODE_PROTON => {
+            let proton_data = game_root.join("Mezeporta").join("ProtonData");
+            Ok(Some(proton_data))
+        }
         WINE_PREFIX_MODE_CUSTOM => {
             let custom_path = launcher_prefs
                 .wine_prefix_custom_path
@@ -1556,7 +1657,7 @@ fn default_system_wine_prefix() -> Option<PathBuf> {
 
 #[cfg(not(windows))]
 fn wine_prefix_initialized(path: &Path) -> bool {
-    path.join("system.reg").is_file()
+    path.join("system.reg").is_file() || path.join("pfx").join("system.reg").is_file()
 }
 
 #[cfg(not(windows))]
@@ -1573,13 +1674,28 @@ struct ResolvedWineRuntime {
     wine_command: PathBuf,
     wineserver_command: PathBuf,
     wine_prefix: Option<PathBuf>,
+    steam_client_path: Option<PathBuf>,
+    steam_compat_data_path: Option<PathBuf>,
     apply_esync_fallback: bool,
     apply_fsync_fallback: bool,
+    proton_use_wined3d: bool,
 }
 
 #[cfg(not(windows))]
 impl ResolvedWineRuntime {
     fn apply_env(&self, command: &mut Command) {
+        if self.kind == WineRuntimeKind::Proton {
+            if let Some(client_path) = self.steam_client_path.as_ref() {
+                command.env("STEAM_COMPAT_CLIENT_INSTALL_PATH", client_path);
+            }
+            if let Some(compat_data) = self.steam_compat_data_path.as_ref() {
+                let _ = fs::create_dir_all(compat_data);
+                command.env("STEAM_COMPAT_DATA_PATH", compat_data);
+            }
+            if self.proton_use_wined3d {
+                command.env("PROTON_USE_WINED3D", "1");
+            }
+        }
         if let Some(prefix) = self.wine_prefix.as_ref() {
             command.env("WINEPREFIX", prefix);
         } else {
@@ -1765,6 +1881,12 @@ fn resolve_wine_runtime(
     } else {
         resolve_wine_command()
     };
+    let wine_prefix = resolve_wine_prefix(game_root, launcher_prefs)?;
+    let (steam_client_path, steam_compat_data_path) = if is_proton {
+        (resolve_steam_client_path(), wine_prefix.clone())
+    } else {
+        (None, None)
+    };
     Ok(ResolvedWineRuntime {
         kind: if is_proton {
             WineRuntimeKind::Proton
@@ -1777,9 +1899,12 @@ fn resolve_wine_runtime(
             resolve_wineserver_command(&wine_command)
         },
         wine_command,
-        wine_prefix: resolve_wine_prefix(game_root, launcher_prefs)?,
+        wine_prefix,
+        steam_client_path,
+        steam_compat_data_path,
         apply_esync_fallback: std::env::var_os("WINEESYNC").is_none(),
         apply_fsync_fallback: std::env::var_os("WINEFSYNC").is_none(),
+        proton_use_wined3d: launcher_prefs.proton_use_wined3d,
     })
 }
 
@@ -2167,6 +2292,74 @@ fn create_linux_ui_sfx_command(audio_path: &Path, volume: f32) -> Result<Command
 }
 
 #[cfg(not(windows))]
+fn sync_wine_prefix_fonts(runtime: &ResolvedWineRuntime, game_root: &Path) {
+    let prefix_windows_dir = if runtime.kind == WineRuntimeKind::Proton {
+        runtime
+            .steam_compat_data_path
+            .as_ref()
+            .map(|p| p.join("pfx").join("drive_c").join("windows"))
+    } else {
+        runtime
+            .wine_prefix
+            .as_ref()
+            .map(|p| p.join("drive_c").join("windows"))
+    };
+
+    let Some(windows_dir) = prefix_windows_dir else {
+        return;
+    };
+
+    if !windows_dir.exists() {
+        return;
+    }
+
+    let fonts_dir = windows_dir.join("Fonts");
+    let _ = fs::create_dir_all(&fonts_dir);
+
+    // 1. Sync all bundled fonts
+    for (name, bytes) in BUNDLED_LAUNCHER_FONTS {
+        let target = fonts_dir.join(name);
+        let _ = write_bundled_file_if_needed(&target, bytes);
+        if *name == "MS Gothic.ttf" {
+            let target_ttc = fonts_dir.join("msgothic.ttc");
+            let _ = write_bundled_file_if_needed(&target_ttc, bytes);
+        }
+    }
+
+    // 2. Scan and sync user-provided fonts from Mezeporta/fonts, fonts, or dat
+    let user_font_folders = [
+        game_root.join("Mezeporta/fonts"),
+        game_root.join("fonts"),
+        game_root.join("dat"),
+    ];
+
+    for folder in &user_font_folders {
+        if let Ok(entries) = fs::read_dir(folder) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() {
+                    let ext = path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .unwrap_or("")
+                        .to_ascii_lowercase();
+                    if matches!(ext.as_str(), "ttf" | "ttc" | "otf") {
+                        if let Some(file_name) = path.file_name() {
+                            let dest = fonts_dir.join(file_name);
+                            let _ = copy_if_changed(&path, &dest);
+                            if file_name == "MS Gothic.ttf" {
+                                let dest_ttc = fonts_dir.join("msgothic.ttc");
+                                let _ = copy_if_changed(&path, &dest_ttc);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(not(windows))]
 fn bootstrap_portable_wine_prefix(
     runtime: &ResolvedWineRuntime,
     apply_controller_fix: bool,
@@ -2193,6 +2386,7 @@ fn bootstrap_portable_wine_prefix(
     if apply_controller_fix {
         sync_wine_controller_overrides(runtime, true)?;
     }
+    sync_wine_prefix_fonts(runtime, prefix);
     Ok(())
 }
 
@@ -2209,6 +2403,9 @@ struct LinuxPrefixStatus {
 
 #[cfg(not(windows))]
 fn kill_wineserver_with_env(runtime: &ResolvedWineRuntime) {
+    if runtime.kind == WineRuntimeKind::Proton {
+        return;
+    }
     let mut command = Command::new(&runtime.wineserver_command);
     runtime.apply_env(&mut command);
     let _ = command.arg("-k").status();
@@ -2386,6 +2583,8 @@ struct LauncherPrefs {
     wine_prefix_custom_path: Option<String>,
     #[serde(default = "default_server_mode")]
     server_mode: String,
+    #[serde(default)]
+    proton_use_wined3d: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, serde::Deserialize)]
@@ -2396,6 +2595,7 @@ struct LauncherPrefUpdate {
     wine_prefix_mode: Option<String>,
     wine_prefix_custom_path: Option<Option<String>>,
     server_mode: Option<String>,
+    proton_use_wined3d: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -2458,6 +2658,7 @@ impl Default for LauncherPrefs {
             wine_prefix_mode: default_wine_prefix_mode(),
             wine_prefix_custom_path: None,
             server_mode: default_server_mode(),
+            proton_use_wined3d: false,
         }
     }
 }
@@ -2751,6 +2952,7 @@ pub(crate) fn run_mhf(
         };
         let runtime = resolve_wine_runtime(&game_root, &launcher_prefs)?;
         sync_wine_controller_overrides(&runtime, launcher_prefs.preload_controller_dlls)?;
+        sync_wine_prefix_fonts(&runtime, &game_root);
         let payload = serde_json::to_vec(&config)
             .map_err(|e| format!("failed to serialize launch config: {e}"))?;
         let payload_b64 = base64::engine::general_purpose::STANDARD.encode(payload);
@@ -3085,6 +3287,9 @@ async fn set_launcher_pref(
     }
     if let Some(server_mode) = payload.server_mode {
         state_sync.launcher_prefs.server_mode = normalize_server_mode(&server_mode);
+    }
+    if let Some(proton_use_wined3d) = payload.proton_use_wined3d {
+        state_sync.launcher_prefs.proton_use_wined3d = proton_use_wined3d;
     }
     let launcher_prefs = state_sync.launcher_prefs.clone();
     state_sync
@@ -4184,7 +4389,6 @@ async fn auth(
         )
     };
 
-    // SignV1 for manifest, preserve api mode
     let patcher_base_url = if server_mode == SERVER_MODE_SIGNV1 {
         auth_resp.patch_server.trim().trim_end_matches('/').to_string()
     } else if auth_resp.patch_server.trim().is_empty() {
@@ -4204,7 +4408,6 @@ async fn auth(
         ""
     };
 
-    // Fetch either manifest (SignV1) or the Wrapper's SHA256 manifest (API).
     let mut raw_patcher_resp: Option<PatcherResponse> = if server_mode == SERVER_MODE_SIGNV1 {
         let patch_file_server = auth_resp.patch_file_server.trim();
         if patcher_base_url.is_empty() || patch_file_server.is_empty() {

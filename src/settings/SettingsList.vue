@@ -41,7 +41,7 @@ import SettingsButton from "./SettingsButton.vue";
 import SettingsDropdown from "./SettingsDropdown.vue";
 import { versionInfoKey } from "./settingsInfo";
 import { settingsPanelState } from "./settingsPanelState";
-import { playHover, playSelect } from "../sfx";
+import { playHover, playSelect, syncAllAudioVolume } from "../sfx";
 
 const vueInstance = getCurrentInstance();
 function t(key, fallback = key) {
@@ -262,6 +262,10 @@ async function onWinePrefixCustomEditButton() {
   await beginWinePrefixCustomEdit();
 }
 
+function onProtonUseWined3dChange(value) {
+  setLauncherPrefs({ protonUseWined3d: Boolean(value) });
+}
+
 const customFontPresets = ref([]);
 
 function isCustomFontFile(fileName) {
@@ -465,15 +469,6 @@ watch(showCustomWinePrefixPath, (visible) => {
   }
 });
 
-watch(
-  () => store.settings.devMode,
-  (devMode) => {
-    if (!devMode && store.settings.winePrefixMode === "proton") {
-      setLauncherPrefs({ winePrefixMode: "portable" });
-    }
-  },
-  { immediate: true }
-);
 
 watch(
   [
@@ -800,7 +795,7 @@ const launcherStyleOptions = computed(() => {
 });
 
 const winePrefixModeOptions = computed(() => {
-  const options = [
+  return [
     {
       value: "portable",
       label: t("wine-prefix-portable-label", "Portable (Mezeporta)"),
@@ -811,23 +806,17 @@ const winePrefixModeOptions = computed(() => {
       label: t("wine-prefix-system-label", "System Wine Prefix"),
       infoKey: "wine-prefix-system",
     },
-  ];
-
-  if (store.settings.devMode) {
-    options.push({
+    {
       value: "proton",
       label: t("wine-prefix-proton-label", "Proton"),
       infoKey: "wine-prefix-proton",
-    });
-  }
-
-  options.push({
-    value: "custom",
-    label: t("wine-prefix-custom-label", "Custom Prefix"),
-    infoKey: "wine-prefix-custom",
-  });
-
-  return options;
+    },
+    {
+      value: "custom",
+      label: t("wine-prefix-custom-label", "Custom Prefix"),
+      infoKey: "wine-prefix-custom",
+    },
+  ];
 });
 
 const fontPresetOptions = computed(() => [
@@ -1108,25 +1097,17 @@ function normalizeSfxVolume(value) {
 
 function onSfxVolumeRangeInput(event) {
   setRange("sfxVolume", event);
+  syncAllAudioVolume();
 }
 
 function onSfxVolumeTextInput(event) {
   setUiPref("sfxVolume", normalizeSfxVolume(event.target.value));
+  syncAllAudioVolume();
 }
 
 function onFullscreenToggle() {
   playSelect();
   setSetting("fullscreen", !store.settings.fullscreen);
-}
-
-function onServerModeToggle() {
-  playSelect();
-  const next = store.settings.serverMode === "signv1" ? "api" : "signv1";
-  storeMut.serverMode = next;
-  setLauncherPrefs({ serverMode: next });
-  if (store.currentEndpoint) {
-    void setCurrentEndpoint({ ...store.currentEndpoint, serverMode: next }, { showLoading: false });
-  }
 }
 
 function onBrightnessRangeInput(event) {
@@ -2121,33 +2102,13 @@ function onMaxCharDisplayNumberInput(value) {
           </template>
         </SettingsItem>
 
-        <div
-          class="settings-binary-toggle flex flex-wrap items-center justify-center gap-3 min-h-[45px] text-center cursor-pointer"
-          data-settings-info-key="launcher-server-mode"
-          data-controller-clickable="true"
-          data-controller-size="big"
-          :data-controller-toggle-state="store.settings.serverMode === 'signv1' ? 'on' : 'off'"
-          tabindex="0"
-          @click.stop.prevent="onServerModeToggle"
-        >
-          <span
-            class="transition-opacity"
-            :class="store.settings.serverMode === 'signv1' ? 'opacity-45 text-white/70' : 'text-[var(--controller-active-color)] opacity-100'"
-          >
-            {{ $t('api-label', 'API') }}
-          </span>
-          <label class="relative inline-flex items-center cursor-pointer" @click.stop.prevent="onServerModeToggle">
-            <input type="checkbox" class="sr-only peer" :checked="store.settings.serverMode === 'signv1'" @change.stop />
-            <div class="w-12 h-7 rounded-full bg-black/50 border transition-colors" :style="{ borderColor: 'var(--controller-active-color)' }"></div>
-            <div class="absolute left-[3px] top-[3px] w-5 h-5 rounded-full bg-[#f5f5f5] shadow transition-transform transition-colors peer-checked:translate-x-5" :style="store.settings.serverMode === 'signv1' ? { backgroundColor: 'var(--controller-active-color)' } : null"></div>
-          </label>
-          <span
-            class="transition-opacity"
-            :class="store.settings.serverMode === 'signv1' ? 'text-[var(--controller-active-color)] opacity-100' : 'opacity-45 text-white/70'"
-          >
-            {{ $t('signv1-label', 'SignV1') }}
-          </span>
-        </div>
+        <SettingsCheckbox
+          v-if="showWinePrefixSettings && store.settings.winePrefixMode === 'proton'"
+          :model-value="store.settings.protonUseWined3d"
+          @update:model-value="onProtonUseWined3dChange"
+          :name="$t('proton-use-wined3d-label', 'Proton WineD3D (OpenGL)')"
+          info-key="proton-use-wined3d"
+        />
 
         <SettingsCheckbox
           :model-value="store.settings.devMode"

@@ -14,7 +14,7 @@ import {
   assetUrl,
 } from "../store";
 
-import { playHover, playSelect, playConfirm, bindSfx } from "../sfx";
+import { playHover, playSelect, playConfirm, playQuickSelect, bindSfx } from "../sfx";
 
 const serverPicker = ref(false);
 
@@ -27,28 +27,26 @@ const rememberEl  = ref(null);
 const serverWrap  = ref(null);
 const dropdownRef = ref(null);
 
-const remoteEndpointCount = computed(() => store.remoteEndpoints?.length ?? 0);
-const localEndpointCount = computed(() => store.endpoints?.length ?? 0);
 const isOfflineMode = computed(() => store.currentEndpoint?.url === "OFFLINEMODE");
 
-// Filtered endpoints that exclude the currently selected server from dropdown options
-const filteredRemoteEndpoints = computed(() => 
-  (store.remoteEndpoints ?? []).filter(
-    endpoint => endpoint.url !== store.currentEndpoint?.url
-  )
-);
-const filteredLocalEndpoints = computed(() => 
-  (store.endpoints ?? []).filter(
-    endpoint => endpoint.url !== store.currentEndpoint?.url
-  )
-);
-
-function serverMainNode(remote, index) {
-  return `server-${remote ? "remote" : "local"}-main-${index}`;
+function isOfflineEndpoint(endpoint) {
+  const url = String(endpoint?.url ?? "").trim().toUpperCase();
+  const name = String(endpoint?.name ?? "").trim().toUpperCase();
+  return url === "OFFLINEMODE" || name === "OFFLINE-MODE";
 }
 
-function serverGearNode(remote, index) {
-  return `server-${remote ? "remote" : "local"}-gear-${index}`;
+const offlineEndpoint = computed(() => {
+  const fromRemote = (store.remoteEndpoints ?? []).find(isOfflineEndpoint);
+  if (fromRemote) return fromRemote;
+  const fromLocal = (store.endpoints ?? []).find(isOfflineEndpoint);
+  if (fromLocal) return fromLocal;
+  return { name: "Offline-Mode", url: "OFFLINEMODE" };
+});
+
+function isCurrentEndpoint(endpoint) {
+  if (!endpoint || !store.currentEndpoint) return false;
+  if (endpoint.url === "OFFLINEMODE" && store.currentEndpoint.url === "OFFLINEMODE") return true;
+  return endpoint.url === store.currentEndpoint.url && endpoint.name === store.currentEndpoint.name;
 }
 
 function endpointHasGear(endpoint) {
@@ -57,98 +55,100 @@ function endpointHasGear(endpoint) {
   return Boolean(url) && url !== "OFFLINEMODE" && name !== "OFFLINE-MODE";
 }
 
-const remoteGearIndexes = computed(() =>
-  (store.remoteEndpoints ?? [])
-    .map((endpoint, index) => (endpointHasGear(endpoint) ? index : null))
+const canEditCurrentEndpoint = computed(() => {
+  if (!store.currentEndpoint) return false;
+  return endpointHasGear(store.currentEndpoint);
+});
+
+const selectableServers = computed(() => {
+  const list = [];
+  (store.remoteEndpoints ?? []).forEach((endpoint, index) => {
+    if (!isOfflineEndpoint(endpoint) && !isCurrentEndpoint(endpoint)) {
+      list.push({
+        endpoint,
+        isRemote: true,
+        originalIndex: index,
+        hasGear: endpointHasGear(endpoint),
+      });
+    }
+  });
+  (store.endpoints ?? []).forEach((endpoint, index) => {
+    if (!isOfflineEndpoint(endpoint) && !isCurrentEndpoint(endpoint)) {
+      list.push({
+        endpoint,
+        isRemote: false,
+        originalIndex: index,
+        hasGear: endpointHasGear(endpoint),
+      });
+    }
+  });
+
+  if (!isOfflineMode.value) {
+    list.push({
+      endpoint: offlineEndpoint.value,
+      isRemote: false,
+      originalIndex: -1,
+      hasGear: false,
+    });
+  }
+
+  return list;
+});
+
+const selectableGearIndexes = computed(() =>
+  selectableServers.value
+    .map((item, index) => (item.hasGear ? index : null))
     .filter((index) => index !== null)
 );
 
-const localGearIndexes = computed(() =>
-  (store.endpoints ?? [])
-    .map((endpoint, index) => (endpointHasGear(endpoint) ? index : null))
-    .filter((index) => index !== null)
-);
-
-function firstRemoteGearNode() {
-  const firstIndex = remoteGearIndexes.value[0];
-  return Number.isInteger(firstIndex) ? serverGearNode(true, firstIndex) : null;
+function serverItemNode(index) {
+  return `server-item-main-${index}`;
 }
 
-function firstLocalGearNode() {
-  const firstIndex = localGearIndexes.value[0];
-  return Number.isInteger(firstIndex) ? serverGearNode(false, firstIndex) : null;
+function serverItemGearNode(index) {
+  return `server-item-gear-${index}`;
 }
 
-function previousRemoteGearNode(index) {
-  const currentIndex = remoteGearIndexes.value.indexOf(index);
-  if (currentIndex <= 0) return null;
-  return serverGearNode(true, remoteGearIndexes.value[currentIndex - 1]);
+function previousServerItemNode(index) {
+  return index > 0 ? serverItemNode(index - 1) : null;
 }
 
-function previousLocalGearNode(index) {
-  const currentIndex = localGearIndexes.value.indexOf(index);
-  if (currentIndex <= 0) return null;
-  return serverGearNode(false, localGearIndexes.value[currentIndex - 1]);
-}
-
-function nextRemoteGearNode(index) {
-  const currentIndex = remoteGearIndexes.value.indexOf(index);
-  if (currentIndex === -1 || currentIndex + 1 >= remoteGearIndexes.value.length) {
-    return null;
+function nextServerItemNode(index) {
+  if (index + 1 < selectableServers.value.length) {
+    return serverItemNode(index + 1);
   }
-  return serverGearNode(true, remoteGearIndexes.value[currentIndex + 1]);
+  return canEditCurrentEndpoint.value ? "server-edit" : "server-add";
 }
 
-function nextLocalGearNode(index) {
-  const currentIndex = localGearIndexes.value.indexOf(index);
-  if (currentIndex === -1 || currentIndex + 1 >= localGearIndexes.value.length) {
-    return null;
-  }
-  return serverGearNode(false, localGearIndexes.value[currentIndex + 1]);
+function previousServerItemGearNode(index) {
+  const currentIndex = selectableGearIndexes.value.indexOf(index);
+  if (currentIndex <= 0) return null;
+  return serverItemGearNode(selectableGearIndexes.value[currentIndex - 1]);
 }
 
-function previousServerMainNode(remote, index) {
-  if (remote) return index > 0 ? serverMainNode(true, index - 1) : null;
-  if (index > 0) return serverMainNode(false, index - 1);
-  return remoteEndpointCount.value > 0
-    ? serverMainNode(true, remoteEndpointCount.value - 1)
-    : null;
-}
-
-function nextServerMainNode(remote, index) {
-  if (remote) {
-    if (index + 1 < remoteEndpointCount.value) return serverMainNode(true, index + 1);
-    if (localEndpointCount.value > 0) return serverMainNode(false, 0);
+function nextServerItemGearNode(index) {
+  const currentIndex = selectableGearIndexes.value.indexOf(index);
+  if (currentIndex === -1 || currentIndex + 1 >= selectableGearIndexes.value.length) {
     return "server-add";
   }
-  if (index + 1 < localEndpointCount.value) return serverMainNode(false, index + 1);
-  return "server-add";
+  return serverItemGearNode(selectableGearIndexes.value[currentIndex + 1]);
 }
 
-function previousServerGearNode(remote, index) {
-  if (remote) return previousRemoteGearNode(index);
-  const previousLocalNode = previousLocalGearNode(index);
-  if (previousLocalNode) return previousLocalNode;
-  const remoteNodes = remoteGearIndexes.value;
-  return remoteNodes.length > 0
-    ? serverGearNode(true, remoteNodes[remoteNodes.length - 1])
-    : null;
-}
-
-function nextServerGearNode(remote, index) {
-  if (remote) {
-    const nextRemoteNode = nextRemoteGearNode(index);
-    if (nextRemoteNode) return nextRemoteNode;
-    return firstLocalGearNode();
+function actionRowUpNode() {
+  if (selectableServers.value.length > 0) {
+    return serverItemNode(selectableServers.value.length - 1);
   }
-  const nextLocalNode = nextLocalGearNode(index);
-  if (nextLocalNode) return nextLocalNode;
   return null;
 }
 
-function addServerUpNode() {
-  if (localEndpointCount.value > 0) return serverMainNode(false, localEndpointCount.value - 1);
-  if (remoteEndpointCount.value > 0) return serverMainNode(true, remoteEndpointCount.value - 1);
+function actionRowGearUpNode() {
+  if (selectableServers.value.length > 0) {
+    const lastIdx = selectableServers.value.length - 1;
+    if (selectableServers.value[lastIdx].hasGear) {
+      return serverItemGearNode(lastIdx);
+    }
+    return serverItemNode(lastIdx);
+  }
   return null;
 }
 
@@ -221,7 +221,7 @@ function restoreServerButtonFocus() {
 }
 
 async function openPickerRef() {
-  playSelect(); // open/close sound
+  playQuickSelect(); // open/close sound
   openPicker(serverPicker);
   if (serverPicker.value) {
     await focusFirstServerOption();
@@ -250,6 +250,26 @@ async function chooseEndpoint(endpoint) {
 // edit/add endpoints
 function editEndpoint(i, remote) { playSelect(); dialogEditEndpoint(i, remote); }
 function addEndpoint()           { playSelect(); dialogAddEndpoint(); }
+
+function editCurrentEndpoint() {
+  playSelect();
+  serverPicker.value = false;
+  if (!store.currentEndpoint) return;
+  const remoteIdx = (store.remoteEndpoints ?? []).findIndex(
+    (ep) => ep.url === store.currentEndpoint?.url && ep.name === store.currentEndpoint?.name
+  );
+  if (remoteIdx !== -1) {
+    dialogEditEndpoint(remoteIdx, true);
+    return;
+  }
+  const localIdx = (store.endpoints ?? []).findIndex(
+    (ep) => ep.url === store.currentEndpoint?.url && ep.name === store.currentEndpoint?.name
+  );
+  if (localIdx !== -1) {
+    dialogEditEndpoint(localIdx, false);
+    return;
+  }
+}
 
 let unbinds = [];
 let interactiveUnbinds = [];
@@ -396,88 +416,71 @@ onBeforeUnmount(() => {
                   data-controller-dropdown-scope="true"
                 >
                   <div
-                    v-if="filteredRemoteEndpoints.length"
+                    v-if="selectableServers.length"
                     class="ps4-server-dropdown-group"
                   >
                     <div
-                      v-for="(endpoint, i) in filteredRemoteEndpoints"
-                      :key="endpoint.url || endpoint.name || i"
+                      v-for="(item, i) in selectableServers"
+                      :key="item.endpoint.url || item.endpoint.name || i"
                       class="ps4-server-option"
-                      :class="{ 'ps4-server-option-no-gear': !endpointHasGear(endpoint) }"
+                      :class="{ 'ps4-server-option-no-gear': !item.hasGear }"
                     >
                       <button
                         type="button"
                         class="ps4-server-option-main"
-                        :data-controller-node="serverMainNode(true, i)"
-                        :data-controller-up="previousServerMainNode(true, i)"
-                        :data-controller-down="nextServerMainNode(true, i)"
-                        :data-controller-right="endpointHasGear(endpoint) ? serverGearNode(true, i) : null"
+                        :data-controller-node="serverItemNode(i)"
+                        :data-controller-up="previousServerItemNode(i)"
+                        :data-controller-down="nextServerItemNode(i)"
+                        :data-controller-right="item.hasGear ? serverItemGearNode(i) : null"
                         @mouseenter="forceRepaint($event.currentTarget)"
-                        @click="chooseEndpoint(endpoint)"
+                        @click="chooseEndpoint(item.endpoint)"
                       >
-                        {{ endpoint.name }}
+                        <span class="truncate">{{ item.endpoint.name }}</span>
                       </button>
                       <button
-                        v-if="endpointHasGear(endpoint)"
+                        v-if="item.hasGear"
                         type="button"
                         class="ps4-server-option-gear"
-                        :data-controller-node="serverGearNode(true, i)"
-                        :data-controller-up="previousServerGearNode(true, i)"
-                        :data-controller-down="nextServerGearNode(true, i)"
-                        :data-controller-left="serverMainNode(true, i)"
+                        :data-controller-node="serverItemGearNode(i)"
+                        :data-controller-up="previousServerItemGearNode(i)"
+                        :data-controller-down="nextServerItemGearNode(i)"
+                        :data-controller-left="serverItemNode(i)"
                         @mouseenter="forceRepaint($event.currentTarget)"
-                        @click="editEndpoint(i, true)"
+                        @click="editEndpoint(item.originalIndex, item.isRemote)"
                       >
                         <GearIcon />
                       </button>
                     </div>
                   </div>
 
-                  <div v-if="filteredLocalEndpoints.length" class="ps4-server-dropdown-group">
-                    <div
-                      v-for="(endpoint, i) in filteredLocalEndpoints"
-                      :key="endpoint.url || endpoint.name || i"
-                      class="ps4-server-option"
-                      :class="{ 'ps4-server-option-no-gear': !endpointHasGear(endpoint) }"
+                  <div class="ps4-server-dropdown-group ps4-server-actions-row">
+                    <button
+                      v-if="canEditCurrentEndpoint"
+                      type="button"
+                      class="ps4-server-action-btn ps4-server-action-edit no-button-image"
+                      data-controller-node="server-edit"
+                      :data-controller-up="actionRowUpNode()"
+                      data-controller-right="server-add"
+                      @mouseenter="forceRepaint($event.currentTarget)"
+                      @click="editCurrentEndpoint"
                     >
-                      <button
-                        type="button"
-                        class="ps4-server-option-main"
-                        :data-controller-node="serverMainNode(false, i)"
-                        :data-controller-up="previousServerMainNode(false, i)"
-                        :data-controller-down="nextServerMainNode(false, i)"
-                        :data-controller-right="endpointHasGear(endpoint) ? serverGearNode(false, i) : null"
-                        @mouseenter="forceRepaint($event.currentTarget)"
-                        @click="chooseEndpoint(endpoint)"
-                      >
-                        {{ endpoint.name }}
-                      </button>
-                      <button
-                        v-if="endpointHasGear(endpoint)"
-                        type="button"
-                        class="ps4-server-option-gear"
-                        :data-controller-node="serverGearNode(false, i)"
-                        :data-controller-up="previousServerGearNode(false, i)"
-                        :data-controller-down="nextServerGearNode(false, i)"
-                        :data-controller-left="serverMainNode(false, i)"
-                        @mouseenter="forceRepaint($event.currentTarget)"
-                        @click="editEndpoint(i, false)"
-                      >
-                        <GearIcon />
-                      </button>
-                    </div>
+                      <span class="ps4-action-text ps4-action-short truncate">{{ $t("server-edit-short-label") }}</span>
+                      <span class="ps4-action-text ps4-action-full truncate">{{ $t("server-edit-label") }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="ps4-server-action-btn ps4-server-action-add no-button-image"
+                      :class="{ 'ps4-server-action-solo': !canEditCurrentEndpoint }"
+                      data-controller-node="server-add"
+                      :data-controller-up="canEditCurrentEndpoint ? actionRowGearUpNode() : actionRowUpNode()"
+                      :data-controller-left="canEditCurrentEndpoint ? 'server-edit' : null"
+                      @mouseenter="forceRepaint($event.currentTarget)"
+                      @click="addEndpoint"
+                    >
+                      <span v-if="canEditCurrentEndpoint" class="ps4-action-text ps4-action-short truncate">{{ $t("server-add-short-label") }}</span>
+                      <span class="ps4-action-text ps4-action-full truncate">{{ $t("server-add-label") }}</span>
+                    </button>
                   </div>
-
-                  <button
-                    type="button"
-                    class="ps4-server-option-add no-button-image ps4-server-option-no-gear"
-                    data-controller-node="server-add"
-                    :data-controller-up="addServerUpNode()"
-                    @mouseenter="forceRepaint($event.currentTarget)"
-                    @click="addEndpoint"
-                  >
-                    {{ $t("server-add-label") }}
-                  </button>
                 </div>
               </div>
             </div>
@@ -575,88 +578,71 @@ onBeforeUnmount(() => {
               data-controller-dropdown-scope="true"
             >
               <div
-                v-if="filteredRemoteEndpoints.length"
+                v-if="selectableServers.length"
                 class="ps4-server-dropdown-group"
               >
                 <div
-                  v-for="(endpoint, i) in filteredRemoteEndpoints"
-                  :key="endpoint.url || endpoint.name || i"
+                  v-for="(item, i) in selectableServers"
+                  :key="item.endpoint.url || item.endpoint.name || i"
                   class="ps4-server-option"
-                  :class="{ 'ps4-server-option-no-gear': !endpointHasGear(endpoint) }"
+                  :class="{ 'ps4-server-option-no-gear': !item.hasGear }"
                 >
                   <button
                     type="button"
                     class="ps4-server-option-main"
-                    :data-controller-node="serverMainNode(true, i)"
-                    :data-controller-up="previousServerMainNode(true, i)"
-                    :data-controller-down="nextServerMainNode(true, i)"
-                    :data-controller-right="endpointHasGear(endpoint) ? serverGearNode(true, i) : null"
+                    :data-controller-node="serverItemNode(i)"
+                    :data-controller-up="previousServerItemNode(i)"
+                    :data-controller-down="nextServerItemNode(i)"
+                    :data-controller-right="item.hasGear ? serverItemGearNode(i) : null"
                     @mouseenter="forceRepaint($event.currentTarget)"
-                    @click="chooseEndpoint(endpoint)"
+                    @click="chooseEndpoint(item.endpoint)"
                   >
-                    <span class="truncate block">{{ endpoint.name }}</span>
+                    <span class="truncate">{{ item.endpoint.name }}</span>
                   </button>
                   <button
-                    v-if="endpointHasGear(endpoint)"
+                    v-if="item.hasGear"
                     type="button"
                     class="ps4-server-option-gear"
-                    :data-controller-node="serverGearNode(true, i)"
-                    :data-controller-up="previousServerGearNode(true, i)"
-                    :data-controller-down="nextServerGearNode(true, i)"
-                    :data-controller-left="serverMainNode(true, i)"
+                    :data-controller-node="serverItemGearNode(i)"
+                    :data-controller-up="previousServerItemGearNode(i)"
+                    :data-controller-down="nextServerItemGearNode(i)"
+                    :data-controller-left="serverItemNode(i)"
                     @mouseenter="forceRepaint($event.currentTarget)"
-                    @click="editEndpoint(i, true)"
+                    @click="editEndpoint(item.originalIndex, item.isRemote)"
                   >
                     <GearIcon />
                   </button>
                 </div>
               </div>
 
-              <div v-if="filteredLocalEndpoints.length" class="ps4-server-dropdown-group">
-                <div
-                  v-for="(endpoint, i) in filteredLocalEndpoints"
-                  :key="endpoint.url || endpoint.name || i"
-                  class="ps4-server-option"
-                  :class="{ 'ps4-server-option-no-gear': !endpointHasGear(endpoint) }"
+              <div class="ps4-server-dropdown-group ps4-server-actions-row">
+                <button
+                  v-if="canEditCurrentEndpoint"
+                  type="button"
+                  class="ps4-server-action-btn ps4-server-action-edit no-button-image"
+                  data-controller-node="server-edit"
+                  :data-controller-up="actionRowUpNode()"
+                  data-controller-right="server-add"
+                  @mouseenter="forceRepaint($event.currentTarget)"
+                  @click="editCurrentEndpoint"
                 >
-                  <button
-                    type="button"
-                    class="ps4-server-option-main"
-                    :data-controller-node="serverMainNode(false, i)"
-                    :data-controller-up="previousServerMainNode(false, i)"
-                    :data-controller-down="nextServerMainNode(false, i)"
-                    :data-controller-right="endpointHasGear(endpoint) ? serverGearNode(false, i) : null"
-                    @mouseenter="forceRepaint($event.currentTarget)"
-                    @click="chooseEndpoint(endpoint)"
-                  >
-                    <span class="truncate block">{{ endpoint.name }}</span>
-                  </button>
-                  <button
-                    v-if="endpointHasGear(endpoint)"
-                    type="button"
-                    class="ps4-server-option-gear"
-                    :data-controller-node="serverGearNode(false, i)"
-                    :data-controller-up="previousServerGearNode(false, i)"
-                    :data-controller-down="nextServerGearNode(false, i)"
-                    :data-controller-left="serverMainNode(false, i)"
-                    @mouseenter="forceRepaint($event.currentTarget)"
-                    @click="editEndpoint(i, false)"
-                  >
-                    <GearIcon />
-                  </button>
-                </div>
+                  <span class="ps4-action-text ps4-action-short truncate">{{ $t("server-edit-short-label") }}</span>
+                  <span class="ps4-action-text ps4-action-full truncate">{{ $t("server-edit-label") }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="ps4-server-action-btn ps4-server-action-add no-button-image"
+                  :class="{ 'ps4-server-action-solo': !canEditCurrentEndpoint }"
+                  data-controller-node="server-add"
+                  :data-controller-up="canEditCurrentEndpoint ? actionRowGearUpNode() : actionRowUpNode()"
+                  :data-controller-left="canEditCurrentEndpoint ? 'server-edit' : null"
+                  @mouseenter="forceRepaint($event.currentTarget)"
+                  @click="addEndpoint"
+                >
+                  <span v-if="canEditCurrentEndpoint" class="ps4-action-text ps4-action-short truncate">{{ $t("server-add-short-label") }}</span>
+                  <span class="ps4-action-text ps4-action-full truncate">{{ $t("server-add-label") }}</span>
+                </button>
               </div>
-
-              <button
-                type="button"
-                class="ps4-server-option-add no-button-image ps4-server-option-no-gear"
-                data-controller-node="server-add"
-                :data-controller-up="addServerUpNode()"
-                @mouseenter="forceRepaint($event.currentTarget)"
-                @click="addEndpoint"
-              >
-                {{ $t("server-add-label") }}
-              </button>
             </div>
           </div>
         </div>
@@ -745,7 +731,8 @@ onBeforeUnmount(() => {
 }
 
 /* Remove background image from Add Server button in dropdown */
-.ps4-server-option-add::before {
+.ps4-server-option-add::before,
+.ps4-server-action-btn::before {
   display: none !important;
 }
 
@@ -757,12 +744,19 @@ onBeforeUnmount(() => {
 .ps4-server-option-gear:focus-visible:not(:disabled),
 .ps4-server-option-add.controller-nav-focused,
 .ps4-server-option-add:hover:not(:disabled),
-.ps4-server-option-add:focus-visible:not(:disabled) {
+.ps4-server-option-add:focus-visible:not(:disabled),
+.ps4-server-action-btn.controller-nav-focused,
+.ps4-server-action-btn:hover:not(:disabled),
+.ps4-server-action-btn:focus-visible:not(:disabled) {
   color: var(--controller-focus-color);
   background: rgba(255, 255, 255, 0.16);
   outline: none !important;
   box-shadow: none !important;
   border-color: transparent !important;
+}
+
+.ps4-server-action-btn.ps4-server-action-edit {
+  border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
 /* Offline mode login button uses ButtonALT.png */

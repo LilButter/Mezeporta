@@ -15,7 +15,7 @@ import {
   SETTINGS_NAV_TILE_WIDTH,
   SETTINGS_SECTIONS as sections,
 } from "../settings/settingsInfo";
-import { playHover, playSelect } from "../sfx";
+import { playHover, playPage, playSelect } from "../sfx";
 
 const { proxy } = getCurrentInstance() ?? {};
 function t(key, fallback = key) {
@@ -64,11 +64,13 @@ function onSectionHover(sectionId) {
 
 function onSectionClick(sectionId) {
   if (!setActiveSection(sectionId)) return;
-  playSelect();
+  playPage();
 }
 
 function onSectionFocus(sectionId) {
-  setActiveSection(sectionId);
+  if (setActiveSection(sectionId)) {
+    playPage();
+  }
 }
 
 function setActiveSection(sectionId) {

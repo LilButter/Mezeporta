@@ -208,12 +208,6 @@ export const SETTINGS_INFO = Object.freeze({
     bodyKey: "settings-info-launcher-controller-body",
     bodyFallback: SETTINGS_INFO_BODY_FALLBACK,
   },
-  "launcher-server-mode": {
-    titleKey: "launcher-server-mode-label",
-    titleFallback: "Server Mode",
-    bodyKey: "settings-info-launcher-server-mode-body",
-    bodyFallback: "Use SignV1 (sign server) auth instead of the API server. Skips patching and launcher assets.",
-  },
   "launcher-hardware-acceleration": {
     titleKey: "launcher-hardware-acceleration-label",
     titleFallback: "Hardware Acceleration",
@@ -474,7 +468,14 @@ export const SETTINGS_INFO = Object.freeze({
     titleFallback: "Proton",
     bodyKey: "settings-info-wine-prefix-proton-body",
     bodyFallback:
-      "For launching through Steam as a non-Steam game. Steam manages Proton and its compat data.",
+      "Runs the game using Proton. Automatically detects Steam Proton or GE-Proton installations.",
+  },
+  "proton-use-wined3d": {
+    titleKey: "proton-use-wined3d-label",
+    titleFallback: "Proton WineD3D (OpenGL)",
+    bodyKey: "settings-info-proton-use-wined3d-body",
+    bodyFallback:
+      "Enables PROTON_USE_WINED3D=1 to force Wine's OpenGL-based DirectX translation instead of Vulkan (DXVK). Useful for virtual machines or GPUs without Vulkan support.",
   },
   "wine-prefix-custom": {
     titleKey: "wine-prefix-custom-label",

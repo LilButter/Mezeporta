@@ -200,6 +200,7 @@ const storePrivate = reactive({
     friendSignature: "none",
     winePrefixMode: "portable",
     winePrefixCustomPath: null,
+    protonUseWined3d: false,
     serverMode: "api",
     classicLauncherWidth: 1124,
     classicLauncherHeight: 600,
@@ -906,6 +907,9 @@ function resolveLauncherPrefs(prefs = {}) {
     ),
     winePrefixCustomPath: normalizeWinePrefixCustomPath(
       prefs.winePrefixCustomPath ?? storePrivate.settings.winePrefixCustomPath
+    ),
+    protonUseWined3d: Boolean(
+      prefs.protonUseWined3d ?? storePrivate.settings.protonUseWined3d ?? false
     ),
     serverMode: normalizeServerMode(
       prefs.serverMode ?? storePrivate.settings.serverMode ?? "api"
@@ -2368,6 +2372,9 @@ export async function initStore() {
   if (data.launcherPrefs && typeof data.launcherPrefs.preloadControllerDlls === "boolean") {
     storePrivate.settings.preloadControllerDlls = data.launcherPrefs.preloadControllerDlls;
   }
+  if (data.launcherPrefs && typeof data.launcherPrefs.protonUseWined3d === "boolean") {
+    storePrivate.settings.protonUseWined3d = data.launcherPrefs.protonUseWined3d;
+  }
   if (typeof persistedFriendSignature === "string") {
     storePrivate.settings.friendSignature = persistedFriendSignature;
   }
@@ -2455,6 +2462,7 @@ export async function initStore() {
     friendSignature: storePrivate.settings.friendSignature,
     winePrefixMode: storePrivate.settings.winePrefixMode,
     winePrefixCustomPath: storePrivate.settings.winePrefixCustomPath,
+    protonUseWined3d: storePrivate.settings.protonUseWined3d ?? false,
     serverMode: storePrivate.settings.serverMode,
   });
   if (storePrivate.currentEndpoint) {
@@ -3066,10 +3074,15 @@ export async function dialogSaveEndpoint() {
     : storePrivate.endpoints;
   endpoints = [...endpoints];
   const newEndpoint = { ...storeMut.editEndpoint };
+  const wasCurrent = (
+    storePrivate.currentEndpoint?.url === endpoints[editEndpointIndex]?.url ||
+    storePrivate.currentEndpoint?.name === endpoints[editEndpointIndex]?.name
+  );
   if (!newEndpoint.isRemote) {
+    const defaultLauncherPort = newEndpoint.serverMode === "signv1" ? 53312 : DEFAULT_LAUNCHER_PORT;
     newEndpoint.launcherPort = normalizeDialogPort(
       newEndpoint.launcherPort,
-      DEFAULT_LAUNCHER_PORT
+      defaultLauncherPort
     );
     newEndpoint.gamePort = normalizeDialogPort(
       newEndpoint.gamePort,
@@ -3080,12 +3093,7 @@ export async function dialogSaveEndpoint() {
   await hanldeDialogClose(
     async () => {
       await setEndpoints(endpoints, editEndpointRemote);
-      if (!editEndpointRemote && editEndpointIndex === endpoints.length - 1) {
-        await setCurrentEndpoint(newEndpoint);
-      } else if (
-        editEndpointRemote &&
-        editEndpointIndex === storePrivate.remoteEndpoints.length - 1
-      ) {
+      if (editEndpointIndex === endpoints.length - 1 || wasCurrent) {
         await setCurrentEndpoint(newEndpoint);
       }
     }
@@ -3220,6 +3228,9 @@ export function setLauncherPrefs(prefs) {
   }
   if (prefs.winePrefixCustomPath !== undefined) {
     storePrivate.settings.winePrefixCustomPath = payload.winePrefixCustomPath;
+  }
+  if (prefs.protonUseWined3d !== undefined) {
+    storePrivate.settings.protonUseWined3d = Boolean(payload.protonUseWined3d);
   }
   if (prefs.serverMode !== undefined) {
     storePrivate.settings.serverMode = payload.serverMode;

@@ -2,7 +2,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::utils::bufcopy;
-use crate::{make_ext_id, FriendData, MhfVersion};
+use crate::{FriendData, MhfVersion};
 use windows::core::PCSTR;
 use windows::Win32::System::LibraryLoader::GetModuleHandleA;
 use windows::Win32::System::Memory::{
@@ -319,6 +319,8 @@ fn friend_layout_signatures_for_version(version: MhfVersion) -> &'static [Friend
     }
 }
 
+pub use crate::make_ext_id;
+
 fn resolve(l: FriendLayout) -> Option<usize> {
     if l.base_off >= 0x1000_0000 {
         return Some(l.base_off);
@@ -456,6 +458,7 @@ fn wait_and_inject(layout: FriendLayout, friends: &[FriendData]) -> bool {
 
     table_ready
 }
+
 
 pub(crate) fn maybe_inject_friends(
     version: MhfVersion,

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api";
+import { watch } from "vue";
 import { store } from "./store";
 
 const FILE_BASENAMES = Object.freeze({
@@ -7,6 +8,10 @@ const FILE_BASENAMES = Object.freeze({
   confirm: "confirm",
   start: "start",
   login: "login",
+  fastpage: "fastpage",
+  slowpage: "slowpage",
+  page: "fastpage",
+  quickselect: "quickselect",
 });
 
 const POOL_SIZE = 4;
@@ -23,7 +28,7 @@ let runtimePlatform =
     : "unknown";
 
 function currentVolume() {
-  return (store.settings?.sfxVolume ?? 70) / 100;
+  return (store.settings?.sfxVolume ?? 30) / 100;
 }
 
 function canUseHtmlAudio() {
@@ -352,6 +357,43 @@ export const playStart = () => {
 export const playLogin = () => {
   return playName("login");
 };
+
+export const playPage = () => {
+  void playName("fastpage");
+};
+
+export const playFastPage = () => {
+  void playName("fastpage");
+};
+
+export const playSlowPage = () => {
+  void playName("slowpage");
+};
+
+export const playQuickSelect = () => {
+  void playName("quickselect");
+};
+
+export function syncAllAudioVolume() {
+  const v = currentVolume();
+  for (const key of Object.keys(AUDIO_POOLS)) {
+    const pool = AUDIO_POOLS[key];
+    if (pool?.audios) {
+      for (const a of pool.audios) {
+        a.volume = v;
+      }
+    }
+  }
+}
+
+if (typeof window !== "undefined") {
+  watch(
+    () => store.settings?.sfxVolume,
+    () => {
+      syncAllAudioVolume();
+    }
+  );
+}
 
 export function preloadLoginSfx() {
   if (!store.settings?.sfxEnabled) return;

@@ -23,7 +23,9 @@ server-select-error = Error connecting to "{ $server }": { $error }
 
 # Server edit
 server-edit-label = Edit Server
+server-edit-short-label = Edit
 server-add-label = Add Server
+server-add-short-label = Add
 server-add-dialog-label = Add a Server
 offline-add-server-hint = Add or Select a server to get started!
 server-name-label = Name
@@ -90,6 +92,7 @@ wine-prefix-status-checking-label = Checking Mezeporta prefix...
 wine-prefix-status-ready-label = Mezeporta prefix ready
 wine-prefix-status-missing-label = Mezeporta prefix not found
 wine-prefix-status-missing-tools-label = Missing runtime tools
+proton-use-wined3d-label = Proton WineD3D (OpenGL)
 linux-prefix-install-label = Portable Prefix Install
 linux-prefix-install-confirmation = Set up the portable Mezeporta Wine prefix for this install?<br><br>This will verify <strong>wine</strong>, <strong>wineserver</strong>, and <strong>winetricks</strong>, create or reuse <strong>Mezeporta/WinePrefix</strong>, run <strong>wineboot -u</strong>, install <strong>d3dcompiler_47</strong>, <strong>dxvk</strong>, and <strong>vcrun2022</strong>, and apply the Linux controller DLL overrides if R-Analog Patch is enabled.
 linux-prefix-install-progress = Installing the portable Mezeporta Wine prefix for this game folder...
@@ -333,6 +336,7 @@ settings-info-wine-prefix-proton-body = For launching through Steam as a non-Ste
 settings-info-wine-prefix-custom-body = Uses a Wine prefix folder you choose.
 settings-info-wine-prefix-custom-path-body = Folder used when Custom Prefix is selected.
 settings-info-wine-prefix-custom-browse-body = Browse to an existing Wine prefix folder.
+settings-info-proton-use-wined3d-body = Enables PROTON_USE_WINED3D=1 to force Wine's OpenGL-based DirectX translation instead of Vulkan (DXVK). Useful for virtual machines or GPUs without Vulkan support.
 settings-info-reset-patch-body = Restore patched files back to the original game state for the active server.
 settings-session-lock-tooltip = Log-out to adjust
 controller-vibration-label = Vibration

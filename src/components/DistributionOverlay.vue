@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { assetUrl, store } from "../store";
 import { getItemDisplayMeta } from "../altclient/savedataView";
-import { playHover, playSelect } from "../sfx";
+import { playHover, playSelect, playPage, playQuickSelect } from "../sfx";
 import renamedItemsRaw from "../../renamed_items.txt?raw";
 import "./DistributionOverlay.css";
 
@@ -691,12 +691,12 @@ function setPage(nextPage, direction) {
 }
 
 function onPrevPage() {
-  playSelect();
+  playPage();
   setPage(pageIndex.value - 1, "prev");
 }
 
 function onNextPage() {
-  playSelect();
+  playPage();
   if (pageIndex.value < totalPages.value - 1) {
     setPage(pageIndex.value + 1, "next");
     return;
@@ -743,7 +743,7 @@ function scrollDistributionDescription(event) {
 }
 
 function toggleEntryFlip(entryId) {
-  playSelect();
+  playQuickSelect();
   const next = new Set(flippedEntryIds.value);
   if (next.has(entryId)) {
     next.delete(entryId);

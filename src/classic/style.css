@@ -1530,3 +1530,51 @@ h2 {
     text-align: center;
     transform: translateY(-10px);
 }
+
+/* Server Dialog Mode Selector */
+.server-mode-selector {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    border-radius: 0.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(0, 0, 0, 0.5);
+    gap: 4px;
+}
+
+.server-mode-btn {
+    font-family: inherit !important;
+    border-radius: 0.25rem !important;
+    padding: 0.25rem 1rem !important;
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    color: rgba(209, 192, 165, 0.5) !important;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.server-mode-btn:hover:not(:disabled) {
+    color: #EFDDC2 !important;
+    background-color: #1b1b1b99 !important;
+}
+
+.server-mode-btn.active {
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #d1c0a5 !important;
+    font-weight: 500;
+    background-color: #00000099 !important;
+    box-shadow: none !important;
+}
+
+.server-mode-btn.active:hover {
+    color: #EFDDC2 !important;
+    background-color: #1b1b1b99 !important;
+}
+
+.server-mode-btn.controller-nav-focused {
+    outline: none !important;
+    border-color: var(--controller-focus-color) !important;
+    box-shadow: 0 0 0 1px var(--controller-focus-color), var(--controller-focus-glow) !important;
+}
